@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>庫存即時看板</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="dashboard">
+        <!-- 頂部標題列 -->
+        <header class="header">
+            <div class="header-left">
+                <h1>🏭 加工鑄件看板系統</h1>
+                <nav class="main-nav">
+                    <a href="{{ url_for('main.index') }}" class="nav-link active">庫存看板</a>
+                    <a href="{{ url_for('main.orders_page') }}" class="nav-link">工單需求</a>
+                </nav>
+            </div>
+            <div class="header-right">
+                <div class="update-info">
+                    <span class="status-dot"></span>
+                    <span id="lastUpdate">載入中...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主要內容區 -->
+        <main class="main-content">
+            <!-- 供需分析區 -->
+            <section class="section supply-demand">
+                <h2 class="section-title">📊 供需即時分析</h2>
+                <div class="cards-grid" id="supplyDemandCards">
+                    <!-- 動態生成 -->
+                </div>
+            </section>
+
+            <!-- 庫存總覽區 -->
+            <section class="section inventory-overview">
+                <h2 class="section-title">📦 鑄件庫存總覽</h2>
+                <div class="inventory-grid" id="inventoryGrid">
+                    <!-- 動態生成 -->
+                </div>
+            </section>
+
+            <!-- 庫存明細區 -->
+            <section class="section inventory-details">
+                <h2 class="section-title">📝 機型庫存明細</h2>
+                <div class="details-table-wrapper">
+                    <table class="details-table" id="detailsTable">
+                        <thead>
+                            <tr>
+                                <th>機型</th>
+                                <th>底座</th>
+                                <th>工作台</th>
+                                <th>橫樑</th>
+                                <th>立柱</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailsTableBody">
+                            <!-- 動態生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+
+</html>

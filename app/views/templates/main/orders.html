@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工單需求看板</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="dashboard">
+        <!-- 頂部標題列 -->
+        <header class="header">
+            <div class="header-left">
+                <h1>🏭 加工鑄件看板系統</h1>
+                <nav class="main-nav">
+                    <a href="{{ url_for('main.index') }}" class="nav-link">庫存看板</a>
+                    <a href="{{ url_for('main.orders_page') }}" class="nav-link active">工單需求</a>
+                </nav>
+            </div>
+            <div class="header-right">
+                <div class="update-info">
+                    <span class="status-dot"></span>
+                    <span id="lastUpdate">載入中...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主要內容區 -->
+        <main class="main-content">
+            <!-- 供需分析區 (保留作為摘要) -->
+            <section class="section supply-demand">
+                <h2 class="section-title">📊 供需即時分析</h2>
+                <div class="cards-grid" id="supplyDemandCards">
+                    <!-- 動態生成 -->
+                </div>
+            </section>
+
+            <!-- 工單進度區 -->
+            <section class="section orders-section">
+                <h2 class="section-title">📋 工單進度追蹤</h2>
+                <div class="orders-stats" id="ordersStats">
+                    <!-- 動態生成 -->
+                </div>
+                <div class="orders-table-wrapper">
+                    <table class="orders-table" id="ordersTable">
+                        <thead>
+                            <tr>
+                                <th>工單號碼</th>
+                                <th>品號說明</th>
+                                <th>客戶</th>
+                                <th>生產開始</th>
+                                <th>生產結束</th>
+                                <th>需求日期</th>
+                                <th>底座</th>
+                                <th>工作台</th>
+                                <th>橫樑</th>
+                                <th>立柱</th>
+                                <th>狀態</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                            <!-- 動態生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+
+</html>

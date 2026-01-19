@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.vscode/
+.DS_Store
+*.xlsx
+*.xls
+server_backup.py
+# 如果您想讓 Excel 範例檔案也同步，請刪除上面的 *.xlsx 和 *.xls
