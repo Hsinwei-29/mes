@@ -1,9 +1,50 @@
-venv/
+venv/# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
 .DS_Store
-*.xlsx
-*.xls
-server_backup.py
-# 如果您想讓 Excel 範例檔案也同步，請刪除上面的 *.xlsx 和 *.xls
+Thumbs.db
+
+# Application specific
+logs/
+*.log
+users.json
+
+# Test and debug files
+test_*.py
+debug_*.py
+check_*.py
+diagnose_*.py
+new_inventory_loader.py
+*_backup_*.py
+sheets_output.txt
+casting_page_output.html
+
+# Large binaries
+cloudflared.exe
+*.exe
+
+# Temporary files
+27606000
+676BB000
+87BC5000
+A4DE5000
+C5026000
+~*.jpg
+~*.png
+l 範例檔案也同步，請刪除上面的 *.xlsx 和 *.xls
