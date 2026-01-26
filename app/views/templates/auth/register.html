@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登入 - 協鴻工業 MES 系統</title>
+    <title>註冊帳戶 - 協鴻工業 MES 系統</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
     <style>
         .login-container {
@@ -103,6 +103,12 @@
             color: #ff5252;
         }
 
+        .alert-success {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            color: #4caf50;
+        }
+
         .company-logo {
             text-align: center;
             margin-bottom: 2rem;
@@ -111,6 +117,23 @@
         .company-logo img {
             max-width: 120px;
             height: auto;
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .login-footer a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .login-footer a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
@@ -123,7 +146,7 @@
             </div>
 
             <div class="login-header">
-                <h1>🔐 系統登入</h1>
+                <h1>📝 註冊新帳戶</h1>
                 <p>協鴻工業 加工鑄件看板系統</p>
             </div>
 
@@ -137,25 +160,28 @@
             {% endif %}
             {% endwith %}
 
-            <form method="POST" action="{{ url_for('auth.login') }}">
+            <form method="POST" action="{{ url_for('auth.register') }}">
                 <div class="form-group">
                     <label for="username">使用者名稱</label>
                     <input type="text" id="username" name="username" required autofocus>
                 </div>
 
                 <div class="form-group">
-                    <label for="password">密碼</label>
+                    <label for="password">密碼（至少 6 個字元）</label>
                     <input type="password" id="password" name="password" required>
                 </div>
 
-                <button type="submit" class="login-btn">登入</button>
+                <div class="form-group">
+                    <label for="confirm_password">確認密碼</label>
+                    <input type="password" id="confirm_password" name="confirm_password" required>
+                </div>
+
+                <button type="submit" class="login-btn">註冊</button>
             </form>
 
-            <div
-                style="text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+            <div class="login-footer">
                 <p style="color: var(--text-secondary);">
-                    還沒有帳戶？ <a href="{{ url_for('auth.register') }}"
-                        style="color: var(--accent-cyan); text-decoration: none;">立即註冊</a>
+                    已有帳戶？ <a href="{{ url_for('auth.login') }}">立即登入</a>
                 </p>
             </div>
         </div>

@@ -42,6 +42,41 @@ def logout():
     logout_user()
     return redirect(url_for('auth.login'))
 
+@auth_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    """註冊新帳戶"""
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        
+        # 驗證輸入
+        if not username or not password:
+            flash('請填寫所有欄位', 'error')
+            return render_template('auth/register.html')
+        
+        if password != confirm_password:
+            flash('密碼與確認密碼不符', 'error')
+            return render_template('auth/register.html')
+        
+        if len(password) < 6:
+            flash('密碼長度至少需要 6 個字元', 'error')
+            return render_template('auth/register.html')
+        
+        # 建立新使用者（預設為一般使用者）
+        user = User.create(username, password, role='user')
+        
+        if user:
+            flash('註冊成功！請登入', 'success')
+            return redirect(url_for('auth.login'))
+        else:
+            flash('使用者名稱已存在', 'error')
+    
+    return render_template('auth/register.html')
+
 @auth_bp.route('/admin')
 @login_required
 @admin_required
