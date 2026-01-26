@@ -1,7 +1,8 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from datetime import datetime
-from ..models.inventory import load_casting_inventory
+from ..models.inventory import load_casting_inventory, get_part_details, update_cell, get_edit_history
 from ..models.order import load_orders
+from .. import socketio
 
 api_bp = Blueprint('api', __name__)
 
@@ -14,7 +15,7 @@ def calculate_supply_demand():
     demand = orders.get('demand', {})
     
     analysis = []
-    for part in ['底座', '工作台', '橫樑', '立柱']:
+    for part in ['工作台', '底座', '橫樑', '立柱']:
         stock = supply.get(part, 0)
         need = demand.get(part, 0)
         diff = stock - need
@@ -49,3 +50,62 @@ def api_summary():
         'supply_demand': supply_demand,
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     })
+
+@api_bp.route('/inventory/details/<part_type>')
+def api_part_details(part_type):
+    data = get_part_details(part_type)
+    return jsonify(data)
+
+@api_bp.route('/inventory/update/<part_type>', methods=['POST'])
+def api_update_inventory(part_type):
+    """更新鑄件製程數據"""
+    try:
+        data = request.get_json()
+        item_id = data.get('item_id')
+        updates = data.get('updates', {})
+        
+        # 使用固定的使用者名稱
+        username = '系統使用者'
+        
+        results = []
+        for field, new_value in updates.items():
+            result = update_cell(part_type, item_id, field, new_value, username)
+            if result.get('success'):
+                # 透過 SocketIO 廣播更新
+                socketio.emit('data_updated', {
+                    'part': part_type,
+                    'item_id': item_id,
+                    'field': field,
+                    'old_value': result.get('old_value'),
+                    'new_value': new_value,
+                    'total': result.get('total'),
+                    'user': username,
+                    'timestamp': datetime.now().strftime('%H:%M:%S')
+                })
+                results.append(result)
+            else:
+                return jsonify({'success': False, 'error': result.get('error')})
+        
+        return jsonify({'success': True, 'results': results})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@api_bp.route('/inventory/history/<part_type>')
+def api_edit_history(part_type):
+    """取得修改歷程"""
+    history = get_edit_history(part_type)
+    return jsonify({'history': history})
+
+@api_bp.route('/inventory/history/<part_type>/<item_id>')
+def api_item_history(part_type, item_id):
+    """取得特定品號的修改歷程"""
+    from ..models.inventory import get_item_history
+    history = get_item_history(part_type, item_id)
+    return jsonify({'history': history, 'item_id': item_id})
+
+@api_bp.route('/inventory/history/stats/<part_type>')
+def api_history_stats(part_type):
+    """取得歷程統計資訊"""
+    from ..models.inventory import get_history_stats
+    stats = get_history_stats(part_type)
+    return jsonify(stats)

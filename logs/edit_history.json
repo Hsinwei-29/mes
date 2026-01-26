@@ -1,0 +1,272 @@
+[
+  {
+    "timestamp": "2026-01-24 19:49:08",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "成品",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-24 19:49:07",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "製程四",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-24 19:49:07",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "製程三",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-24 19:49:07",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "製程二",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-24 19:49:06",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "製程一",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-24 19:49:06",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "素材",
+    "old_value": 1,
+    "new_value": 1
+  },
+  {
+    "timestamp": "2026-01-23 21:48:19",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "成品",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:48:18",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "製程四",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:48:18",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "製程三",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:48:18",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "製程二",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:48:18",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "製程一",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:48:17",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "素材",
+    "old_value": 25,
+    "new_value": 1
+  },
+  {
+    "timestamp": "2026-01-23 21:31:01",
+    "user": "系統使用者",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "成品研磨",
+    "old_value": 2,
+    "new_value": 2
+  },
+  {
+    "timestamp": "2026-01-23 21:31:00",
+    "user": "系統使用者",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "製程三",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:31:00",
+    "user": "系統使用者",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "製程四",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:31:00",
+    "user": "系統使用者",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "素材",
+    "old_value": 2,
+    "new_value": 1
+  },
+  {
+    "timestamp": "2026-01-23 21:25:04",
+    "user": "系統使用者",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "成品研磨",
+    "old_value": 2,
+    "new_value": 2
+  },
+  {
+    "timestamp": "2026-01-23 21:25:04",
+    "user": "系統使用者",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "製程三",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:25:04",
+    "user": "系統使用者",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "製程四",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:25:03",
+    "user": "系統使用者",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "素材",
+    "old_value": 1,
+    "new_value": 2
+  },
+  {
+    "timestamp": "2026-01-23 21:24:11",
+    "user": "系統使用者",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "成品研磨",
+    "old_value": 2,
+    "new_value": 2
+  },
+  {
+    "timestamp": "2026-01-23 21:24:10",
+    "user": "系統使用者",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "製程三",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:24:10",
+    "user": "系統使用者",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "製程四",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:24:10",
+    "user": "系統使用者",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "素材",
+    "old_value": 0,
+    "new_value": 1
+  },
+  {
+    "timestamp": "2026-01-23 21:15:57",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "成品",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:15:55",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "製程四",
+    "old_value": null,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:15:54",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "製程三",
+    "old_value": null,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:15:52",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "製程二",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:15:51",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "製程一",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-23 21:15:49",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813000949",
+    "field": "素材",
+    "old_value": 2,
+    "new_value": 25
+  }
+]
