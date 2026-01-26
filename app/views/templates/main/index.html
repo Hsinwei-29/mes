@@ -27,6 +27,15 @@
             </div>
             <div class="header-right">
                 <button id="langSwitch" class="lang-btn" onclick="toggleLanguage()">EN</button>
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('auth.profile') }}" class="lang-btn" style="margin-left: 0.5rem;">⚙️ 個人資料</a>
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('auth.admin_dashboard') }}" class="lang-btn" style="margin-left: 0.5rem;">👤 管理員</a>
+                {% endif %}
+                <a href="{{ url_for('auth.logout') }}" class="lang-btn" style="margin-left: 0.5rem;">登出</a>
+                {% else %}
+                <a href="{{ url_for('auth.login') }}" class="lang-btn" style="margin-left: 0.5rem;">登入</a>
+                {% endif %}
                 <div class="update-info">
                     <span class="status-dot"></span>
                     <span id="lastUpdate">載入中...</span>

@@ -1,0 +1,1546 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作台 製程追蹤 - 加工鑄件看板系統</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        .subheader {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 2rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            color: var(--accent-cyan);
+            background: rgba(34, 211, 238, 0.1);
+        }
+
+        .page-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .editor-container {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .edit-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .edit-table th,
+        .edit-table td {
+            padding: 0.75rem 1rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .edit-table th {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .edit-table th.highlight-final {
+            color: var(--accent-cyan);
+        }
+
+        .edit-table td.model-col {
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .edit-table td.total-col {
+            color: var(--accent-cyan);
+            font-weight: 700;
+        }
+
+        .edit-input {
+            width: 60px;
+            padding: 0.5rem;
+            text-align: center;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .edit-input:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+        }
+
+        .edit-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .save-btn {
+            padding: 0.4rem 0.8rem;
+            background: var(--accent-green);
+            border: none;
+            border-radius: 4px;
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: opacity 0.2s;
+        }
+
+        .save-btn:hover {
+            opacity: 0.85;
+        }
+
+        .save-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .row-updated {
+            animation: rowFlash 1s ease;
+        }
+
+        @keyframes rowFlash {
+
+            0%,
+            100% {
+                background: var(--bg-card);
+            }
+
+            50% {
+                background: rgba(16, 185, 129, 0.2);
+            }
+        }
+
+        .login-prompt {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .login-prompt a {
+            color: var(--accent-cyan);
+        }
+
+        .history-section {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .history-title {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .history-list {
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+        }
+
+        .history-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-muted);
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        /* 履歷按鈕樣式 */
+        .history-btn {
+            padding: 0.4rem 0.8rem;
+            background: var(--accent-cyan);
+            border: none;
+            border-radius: 4px;
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: opacity 0.2s;
+            margin-left: 0.5rem;
+        }
+
+        .history-btn:hover {
+            opacity: 0.85;
+        }
+
+        /* 履歷彈出視窗 */
+        .history-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .history-modal.active {
+            display: flex;
+        }
+
+        .history-modal-content {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-modal-header h2 {
+            font-size: 1.25rem;
+            color: var(--text-primary);
+        }
+
+        .history-modal-close {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .history-modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .history-modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        /* 時間軸樣式 */
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0.5rem;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border-color);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-bottom: 1.5rem;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -1.5rem;
+            top: 0.25rem;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent-cyan);
+            border: 2px solid var(--bg-card);
+            box-shadow: 0 0 0 2px var(--border-color);
+        }
+
+        .timeline-item.increase::before {
+            background: var(--accent-green);
+        }
+
+        .timeline-item.decrease::before {
+            background: var(--accent-red);
+        }
+
+        .timeline-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .timeline-content {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            border-left: 3px solid var(--accent-cyan);
+        }
+
+        .timeline-item.increase .timeline-content {
+            border-left-color: var(--accent-green);
+        }
+
+        .timeline-item.decrease .timeline-content {
+            border-left-color: var(--accent-red);
+        }
+
+        .timeline-field {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-change {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .timeline-old {
+            color: var(--text-muted);
+            text-decoration: line-through;
+        }
+
+        .timeline-new {
+            color: var(--accent-cyan);
+            font-weight: 600;
+        }
+
+        .timeline-user {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        .no-history {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard">
+        <!-- 頂部標題列 -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo-area">
+                    <img src="/static/logo.jpg" alt="協鴻" class="company-logo"
+                        onerror="this.style.display='none'">
+                </div>
+                <h1 id="appTitle">協鴻工業 加工鑄件看板系統</h1>
+                <nav class="main-nav">
+                    <a href="/" class="nav-link" id="navInventory">庫存看板</a>
+                    <a href="/orders" class="nav-link" id="navOrders">工單需求</a>
+                </nav>
+            </div>
+            <div class="header-right">
+                <button id="langSwitch" class="lang-btn" onclick="toggleLanguage()">EN</button>
+            </div>
+        </header>
+
+        <!-- 子標題列 -->
+        <div class="subheader">
+            <a href="/" class="back-btn">← 返回</a>
+            <h2 class="page-title">🔳 工作台 詳細製程追蹤</h2>
+        </div>
+
+        <!-- 編輯區域 -->
+        <div class="editor-container">
+
+            <table class="edit-table" id="editTable">
+                <thead>
+                    <tr>
+                        
+                        <th class="">品號</th>
+                        
+                        <th class="">機型</th>
+                        
+                        <th class="">素材</th>
+                        
+                        <th class="">製程一</th>
+                        
+                        <th class="">製程二</th>
+                        
+                        <th class="">製程三</th>
+                        
+                        <th class="">製程四</th>
+                        
+                        <th class="">成品</th>
+                        
+                        <th class="highlight-final">總數</th>
+                        
+                        <th>操作</th>
+                        <th>履歷</th>
+                    </tr>
+                </thead>
+                <tbody id="editTableBody">
+                    
+                    <tr data-item-id="8813000949">
+                        
+                        
+                        <td>8813000949</td>
+                        
+                        
+                        
+                        <td class="model-col">HEP2150</td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="素材"
+                                value="1" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程一"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程二"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程三"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程四"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="成品"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td class="total-col">1</td>
+                        
+                        
+                        <td>
+                            <button class="save-btn" onclick="saveRow(&quot;8813000949&quot;, this)">儲存</button>
+                        </td>
+                        <td>
+                            <button class="history-btn"
+                                onclick="showHistory(&quot;8813000949&quot;, &quot;HEP2150&quot;)">📋
+                                履歷</button>
+                        </td>
+                    </tr>
+                    
+                    <tr data-item-id="8813001304">
+                        
+                        
+                        <td>8813001304</td>
+                        
+                        
+                        
+                        <td class="model-col">HSA-216</td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="素材"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程一"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程二"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程三"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程四"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="成品"
+                                value="5" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td class="total-col">0</td>
+                        
+                        
+                        <td>
+                            <button class="save-btn" onclick="saveRow(&quot;8813001304&quot;, this)">儲存</button>
+                        </td>
+                        <td>
+                            <button class="history-btn"
+                                onclick="showHistory(&quot;8813001304&quot;, &quot;HSA-216&quot;)">📋
+                                履歷</button>
+                        </td>
+                    </tr>
+                    
+                    <tr data-item-id="8813001305">
+                        
+                        
+                        <td>8813001305</td>
+                        
+                        
+                        
+                        <td class="model-col">HSA-316</td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="素材"
+                                value="2" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程一"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程二"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程三"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程四"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="成品"
+                                value="1" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td class="total-col">0</td>
+                        
+                        
+                        <td>
+                            <button class="save-btn" onclick="saveRow(&quot;8813001305&quot;, this)">儲存</button>
+                        </td>
+                        <td>
+                            <button class="history-btn"
+                                onclick="showHistory(&quot;8813001305&quot;, &quot;HSA-316&quot;)">📋
+                                履歷</button>
+                        </td>
+                    </tr>
+                    
+                    <tr data-item-id="8813001120">
+                        
+                        
+                        <td>8813001120</td>
+                        
+                        
+                        
+                        <td class="model-col">HSA323</td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="素材"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程一"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程二"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程三"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程四"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="成品"
+                                value="1" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td class="total-col">0</td>
+                        
+                        
+                        <td>
+                            <button class="save-btn" onclick="saveRow(&quot;8813001120&quot;, this)">儲存</button>
+                        </td>
+                        <td>
+                            <button class="history-btn"
+                                onclick="showHistory(&quot;8813001120&quot;, &quot;HSA323&quot;)">📋
+                                履歷</button>
+                        </td>
+                    </tr>
+                    
+                    <tr data-item-id="8813001079">
+                        
+                        
+                        <td>8813001079</td>
+                        
+                        
+                        
+                        <td class="model-col">HSA423</td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="素材"
+                                value="1" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程一"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程二"
+                                value="1" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程三"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程四"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="成品"
+                                value="1" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td class="total-col">0</td>
+                        
+                        
+                        <td>
+                            <button class="save-btn" onclick="saveRow(&quot;8813001079&quot;, this)">儲存</button>
+                        </td>
+                        <td>
+                            <button class="history-btn"
+                                onclick="showHistory(&quot;8813001079&quot;, &quot;HSA423&quot;)">📋
+                                履歷</button>
+                        </td>
+                    </tr>
+                    
+                    <tr data-item-id="8813001147">
+                        
+                        
+                        <td>8813001147</td>
+                        
+                        
+                        
+                        <td class="model-col">HSA-523</td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="素材"
+                                value="1" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程一"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程二"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程三"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程四"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="成品"
+                                value="1" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td class="total-col">0</td>
+                        
+                        
+                        <td>
+                            <button class="save-btn" onclick="saveRow(&quot;8813001147&quot;, this)">儲存</button>
+                        </td>
+                        <td>
+                            <button class="history-btn"
+                                onclick="showHistory(&quot;8813001147&quot;, &quot;HSA-523&quot;)">📋
+                                履歷</button>
+                        </td>
+                    </tr>
+                    
+                    <tr data-item-id="8813001061">
+                        
+                        
+                        <td>8813001061</td>
+                        
+                        
+                        
+                        <td class="model-col">HSA528</td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="素材"
+                                value="1" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程一"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程二"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程三"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程四"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="成品"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td class="total-col">0</td>
+                        
+                        
+                        <td>
+                            <button class="save-btn" onclick="saveRow(&quot;8813001061&quot;, this)">儲存</button>
+                        </td>
+                        <td>
+                            <button class="history-btn"
+                                onclick="showHistory(&quot;8813001061&quot;, &quot;HSA528&quot;)">📋
+                                履歷</button>
+                        </td>
+                    </tr>
+                    
+                    <tr data-item-id="8813001252">
+                        
+                        
+                        <td>8813001252</td>
+                        
+                        
+                        
+                        <td class="model-col">SW-216</td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="素材"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程一"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程二"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程三"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程四"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="成品"
+                                value="2" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td class="total-col">0</td>
+                        
+                        
+                        <td>
+                            <button class="save-btn" onclick="saveRow(&quot;8813001252&quot;, this)">儲存</button>
+                        </td>
+                        <td>
+                            <button class="history-btn"
+                                onclick="showHistory(&quot;8813001252&quot;, &quot;SW-216&quot;)">📋
+                                履歷</button>
+                        </td>
+                    </tr>
+                    
+                    <tr data-item-id="8813001254">
+                        
+                        
+                        <td>8813001254</td>
+                        
+                        
+                        
+                        <td class="model-col">SW-316</td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="素材"
+                                value="2" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程一"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程二"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程三"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程四"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="成品"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td class="total-col">0</td>
+                        
+                        
+                        <td>
+                            <button class="save-btn" onclick="saveRow(&quot;8813001254&quot;, this)">儲存</button>
+                        </td>
+                        <td>
+                            <button class="history-btn"
+                                onclick="showHistory(&quot;8813001254&quot;, &quot;SW-316&quot;)">📋
+                                履歷</button>
+                        </td>
+                    </tr>
+                    
+                    <tr data-item-id="8813001247">
+                        
+                        
+                        <td>8813001247</td>
+                        
+                        
+                        
+                        <td class="model-col">SW-320</td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="素材"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程一"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程二"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程三"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程四"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="成品"
+                                value="3" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td class="total-col">0</td>
+                        
+                        
+                        <td>
+                            <button class="save-btn" onclick="saveRow(&quot;8813001247&quot;, this)">儲存</button>
+                        </td>
+                        <td>
+                            <button class="history-btn"
+                                onclick="showHistory(&quot;8813001247&quot;, &quot;SW-320&quot;)">📋
+                                履歷</button>
+                        </td>
+                    </tr>
+                    
+                    <tr data-item-id="8813001244">
+                        
+                        
+                        <td>8813001244</td>
+                        
+                        
+                        
+                        <td class="model-col">SW323</td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="素材"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程一"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程二"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程三"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程四"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="成品"
+                                value="1" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td class="total-col">0</td>
+                        
+                        
+                        <td>
+                            <button class="save-btn" onclick="saveRow(&quot;8813001244&quot;, this)">儲存</button>
+                        </td>
+                        <td>
+                            <button class="history-btn"
+                                onclick="showHistory(&quot;8813001244&quot;, &quot;SW323&quot;)">📋
+                                履歷</button>
+                        </td>
+                    </tr>
+                    
+                    <tr data-item-id="8813001255">
+                        
+                        
+                        <td>8813001255</td>
+                        
+                        
+                        
+                        <td class="model-col">SW-416</td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="素材"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程一"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程二"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程三"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程四"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="成品"
+                                value="2" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td class="total-col">0</td>
+                        
+                        
+                        <td>
+                            <button class="save-btn" onclick="saveRow(&quot;8813001255&quot;, this)">儲存</button>
+                        </td>
+                        <td>
+                            <button class="history-btn"
+                                onclick="showHistory(&quot;8813001255&quot;, &quot;SW-416&quot;)">📋
+                                履歷</button>
+                        </td>
+                    </tr>
+                    
+                    <tr data-item-id="8813001261">
+                        
+                        
+                        <td>8813001261</td>
+                        
+                        
+                        
+                        <td class="model-col">SW423</td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="素材"
+                                value="2" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程一"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程二"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程三"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程四"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="成品"
+                                value="1" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td class="total-col">0</td>
+                        
+                        
+                        <td>
+                            <button class="save-btn" onclick="saveRow(&quot;8813001261&quot;, this)">儲存</button>
+                        </td>
+                        <td>
+                            <button class="history-btn"
+                                onclick="showHistory(&quot;8813001261&quot;, &quot;SW423&quot;)">📋
+                                履歷</button>
+                        </td>
+                    </tr>
+                    
+                    <tr data-item-id="8813001124">
+                        
+                        
+                        <td>8813001124</td>
+                        
+                        
+                        
+                        <td class="model-col">HSA-2212</td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="素材"
+                                value="2" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程一"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程二"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程三"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="製程四"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td>
+                            <input type="number" class="edit-input" data-field="成品"
+                                value="0" min="0">
+                        </td>
+                        
+                        
+                        
+                        <td class="total-col">0</td>
+                        
+                        
+                        <td>
+                            <button class="save-btn" onclick="saveRow(&quot;8813001124&quot;, this)">儲存</button>
+                        </td>
+                        <td>
+                            <button class="history-btn"
+                                onclick="showHistory(&quot;8813001124&quot;, &quot;HSA-2212&quot;)">📋
+                                履歷</button>
+                        </td>
+                    </tr>
+                    
+                </tbody>
+            </table>
+
+            <!-- 最近修改歷程 -->
+            <div class="history-section">
+                <h3 class="history-title">📋 最近修改記錄</h3>
+                <div class="history-list" id="historyList">
+                    <!-- 動態載入 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 履歷彈出視窗 -->
+        <div id="historyModal" class="history-modal">
+            <div class="history-modal-content">
+                <div class="history-modal-header">
+                    <h2 id="historyModalTitle">📋 製程轉換履歷</h2>
+                    <button class="history-modal-close" onclick="closeHistoryModal()">&times;</button>
+                </div>
+                <div class="history-modal-body">
+                    <div id="historyTimeline" class="timeline">
+                        <!-- 動態載入時間軸 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const partName = '工作台';
+        const socket = io();
+
+        // 監聽即時更新
+        socket.on('data_updated', function (data) {
+            if (data.part === partName) {
+                updateRowData(data.item_id, data.field, data.new_value, data.total);
+                addHistoryItem(data);
+            }
+        });
+
+        function updateRowData(itemId, field, newValue, total) {
+            const row = document.querySelector(`tr[data-item-id="${itemId}"]`);
+            if (row) {
+                // 更新對應欄位
+                const input = row.querySelector(`input[data-field="${field}"]`);
+                if (input) input.value = newValue;
+
+                // 更新總數
+                const totalCell = row.querySelector('.total-col');
+                if (totalCell) totalCell.textContent = total;
+
+                // 閃爍效果
+                row.classList.add('row-updated');
+                setTimeout(() => row.classList.remove('row-updated'), 1000);
+            }
+        }
+
+        function saveRow(itemId, btn) {
+            const row = btn.closest('tr');
+            const inputs = row.querySelectorAll('.edit-input');
+            const updates = {};
+
+            inputs.forEach(input => {
+                updates[input.dataset.field] = parseInt(input.value) || 0;
+            });
+
+            btn.disabled = true;
+            btn.textContent = '儲存中...';
+
+            fetch(`/api/inventory/update/${partName}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ item_id: itemId, updates: updates })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        btn.textContent = '✓';
+                        setTimeout(() => { btn.textContent = '儲存'; btn.disabled = false; }, 1500);
+                    } else {
+                        alert('儲存失敗: ' + (data.error || '未知錯誤'));
+                        btn.textContent = '儲存';
+                        btn.disabled = false;
+                    }
+                })
+                .catch(err => {
+                    alert('網路錯誤');
+                    btn.textContent = '儲存';
+                    btn.disabled = false;
+                });
+        }
+
+        function addHistoryItem(data) {
+            const list = document.getElementById('historyList');
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            item.innerHTML = `<strong>${data.user}</strong> 修改 ${data.item_id} 的 ${data.field}: ${data.old_value} → ${data.new_value} (${data.timestamp})`;
+            list.insertBefore(item, list.firstChild);
+        }
+
+        // 載入歷史記錄
+        fetch(`/api/inventory/history/${partName}`)
+            .then(res => res.json())
+            .then(data => {
+                const list = document.getElementById('historyList');
+                if (data.history && data.history.length > 0) {
+                    list.innerHTML = data.history.map(h =>
+                        `<div class="history-item"><strong>${h.user}</strong> 修改 ${h.item_id} 的 ${h.field}: ${h.old_value} → ${h.new_value} (${h.timestamp})</div>`
+                    ).join('');
+                } else {
+                    list.innerHTML = '<div class="history-item">尚無修改記錄</div>';
+                }
+            });
+
+        // 顯示履歷彈出視窗
+        function showHistory(itemId, modelName) {
+            const modal = document.getElementById('historyModal');
+            const title = document.getElementById('historyModalTitle');
+            const timeline = document.getElementById('historyTimeline');
+
+            title.textContent = `📋 ${modelName} (${itemId}) 製程轉換履歷`;
+            timeline.innerHTML = '<div class="no-history">載入中...</div>';
+            modal.classList.add('active');
+
+            // 載入該品號的履歷 - 對中文進行 URL 編碼
+            const encodedPartName = encodeURIComponent(partName);
+            const encodedItemId = encodeURIComponent(itemId);
+            const apiUrl = `/api/inventory/history/${encodedPartName}/${encodedItemId}`;
+            console.log('Fetching history from:', apiUrl);
+
+            fetch(apiUrl)
+                .then(res => {
+                    console.log('Response status:', res.status);
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    console.log('History data:', data);
+                    if (data.history && data.history.length > 0) {
+                        renderTimeline(data.history);
+                    } else {
+                        timeline.innerHTML = '<div class="no-history">📭 此品號尚無製程轉換記錄</div>';
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to load history:', err);
+                    timeline.innerHTML = `<div class="no-history">❌ 載入失敗<br><small>${err.message}</small></div>`;
+                });
+        }
+
+        // 關閉履歷彈出視窗
+        function closeHistoryModal() {
+            const modal = document.getElementById('historyModal');
+            modal.classList.remove('active');
+        }
+
+        // 渲染時間軸
+        function renderTimeline(history) {
+            const timeline = document.getElementById('historyTimeline');
+
+            if (history.length === 0) {
+                timeline.innerHTML = '<div class="no-history">📭 尚無記錄</div>';
+                return;
+            }
+
+            const items = history.map(h => {
+                const oldVal = h.old_value ?? 0;
+                const newVal = h.new_value ?? 0;
+                const diff = newVal - oldVal;
+                const changeType = diff > 0 ? 'increase' : diff < 0 ? 'decrease' : '';
+                const arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '→';
+
+                return `
+                    <div class="timeline-item ${changeType}">
+                        <div class="timeline-time">${h.timestamp}</div>
+                        <div class="timeline-content">
+                            <div class="timeline-field">${h.field}</div>
+                            <div class="timeline-change">
+                                <span class="timeline-old">${oldVal}</span>
+                                <span>${arrow}</span>
+                                <span class="timeline-new">${newVal}</span>
+                                <span style="color: var(--text-muted);">(${diff > 0 ? '+' : ''}${diff})</span>
+                            </div>
+                            <div class="timeline-user">👤 ${h.user}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            timeline.innerHTML = items;
+        }
+
+        // 點擊背景關閉彈出視窗
+        document.getElementById('historyModal').addEventListener('click', function (e) {
+            if (e.target === this) {
+                closeHistoryModal();
+            }
+        });
+    </script>
+</body>
+
+</html>

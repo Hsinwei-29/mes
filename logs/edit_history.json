@@ -1,5 +1,59 @@
 [
   {
+    "timestamp": "2026-01-26 22:49:16",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "成品",
+    "old_value": 5,
+    "new_value": 5
+  },
+  {
+    "timestamp": "2026-01-26 22:49:16",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "製程四",
+    "old_value": null,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-26 22:49:15",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "製程三",
+    "old_value": null,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-26 22:49:15",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "製程二",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-26 22:49:14",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "製程一",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-01-26 22:49:14",
+    "user": "系統使用者",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "素材",
+    "old_value": 0,
+    "new_value": 1
+  },
+  {
     "timestamp": "2026-01-24 19:49:08",
     "user": "系統使用者",
     "part": "工作台",

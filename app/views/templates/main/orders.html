@@ -15,7 +15,11 @@
         <!-- 頂部標題列 -->
         <header class="header">
             <div class="header-left">
-                <h1>🏭 加工鑄件看板系統</h1>
+                <div class="logo-area">
+                    <img src="{{ url_for('static', filename='logo.jpg') }}" alt="協鴻" class="company-logo"
+                        onerror="this.style.display='none'">
+                </div>
+                <h1>協鴻工業 加工鑄件看板系統</h1>
                 <nav class="main-nav">
                     <a href="{{ url_for('main.index') }}" class="nav-link">庫存看板</a>
                     <a href="{{ url_for('main.orders_page') }}" class="nav-link active">工單需求</a>
@@ -55,8 +59,8 @@
                                 <th>生產開始</th>
                                 <th>生產結束</th>
                                 <th>需求日期</th>
-                                <th>底座</th>
                                 <th>工作台</th>
+                                <th>底座</th>
                                 <th>橫樑</th>
                                 <th>立柱</th>
                                 <th>狀態</th>

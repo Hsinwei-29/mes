@@ -52,6 +52,13 @@ def load_casting_inventory():
                 
                 # 提取機型詳細資料
                 if '機型' in df.columns:
+                    # 取得成品欄位索引（總數前一個欄位）
+                    config = CONFIGS.get(part_name, [])
+                    finished_col_idx = None
+                    if len(config) >= 2:
+                        # 取倒數第二個配置（總數前一個，即成品）
+                        finished_col_idx = config[-2][1]
+                    
                     for _, row in df.iterrows():
                         model = row.get('機型', '')
                         if pd.notna(model) and str(model).strip():
@@ -61,14 +68,17 @@ def load_casting_inventory():
                             if model_str not in all_models:
                                 all_models[model_str] = {'機型': model_str, '工作台': 0, '底座': 0, '橫樑': 0, '立柱': 0}
                             
-                            # 計算該機型在此鑄件類型的總數
-                            model_total = 0
-                            for col in sum_cols:
-                                val = row.get(col, 0)
+                            # 使用成品欄位的數量
+                            finished_value = 0
+                            if finished_col_idx is not None:
+                                val = row.iloc[finished_col_idx]
                                 if pd.notna(val):
-                                    model_total += int(val)
+                                    try:
+                                        finished_value = int(float(val))
+                                    except:
+                                        finished_value = 0
                             
-                            all_models[model_str][part_name] = model_total
+                            all_models[model_str][part_name] = finished_value
                 
             except Exception as e:
                 print(f"Error loading {part_name}: {e}")

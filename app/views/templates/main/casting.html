@@ -149,6 +149,29 @@
             color: var(--accent-cyan);
         }
 
+        /* 供應商下拉選單樣式 */
+        .supplier-select {
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            width: 100%;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .supplier-select:hover {
+            border-color: var(--accent-cyan);
+        }
+
+        .supplier-select:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 2px rgba(0, 255, 255, 0.1);
+        }
+
         .history-section {
             margin-top: 2rem;
             padding: 1.5rem;
@@ -455,6 +478,44 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
         const partName = '{{ part_name }}';
+        // 自動計算總數
+        document.addEventListener('DOMContentLoaded', function () {
+            const tableBody = document.getElementById('editTableBody');
+            if (tableBody) {
+                // 為所有輸入框添加事件監聽
+                tableBody.addEventListener('input', function (e) {
+                    if (e.target.classList.contains('edit-input')) {
+                        updateRowTotal(e.target.closest('tr'));
+                    }
+                });
+
+                // 初始化所有行的總數
+                const rows = tableBody.querySelectorAll('tr');
+                rows.forEach(row => updateRowTotal(row));
+            }
+        });
+
+        // 更新單行的總數
+        function updateRowTotal(row) {
+            const inputs = row.querySelectorAll('.edit-input');
+            const totalCell = row.querySelector('.total-col');
+
+            if (!totalCell) return;
+
+            let total = 0;
+            inputs.forEach(input => {
+                // 排除總數欄位本身
+                const field = input.dataset.field;
+                if (field && field !== '總數') {
+                    const value = parseInt(input.value) || 0;
+                    total += value;
+                }
+            });
+
+            totalCell.textContent = total;
+        }
+
+        // WebSocket 連接
         const socket = io();
 
         // 監聽即時更新

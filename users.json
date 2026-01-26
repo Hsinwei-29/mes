@@ -1,0 +1,11 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "username": "hsinwei",
+      "password_hash": "scrypt:32768:8:1$cPA2SQX2BUj3WQSq$b8ad05fcdb484b80824692ae628bf169d1bf989d515373643389d0be296c7325396c265ee420e72d9276597398dcfa99545ad2bc6662b637071d8c4141619cfe",
+      "role": "admin",
+      "created_at": "2026-01-26T23:20:39.244273"
+    }
+  ]
+}

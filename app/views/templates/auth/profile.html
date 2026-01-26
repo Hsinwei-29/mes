@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>個人資料 - 協鴻工業 MES 系統</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+    <style>
+        .profile-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+        }
+
+        .profile-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .profile-header h1 {
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .profile-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+        }
+
+        .profile-card h2 {
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(0, 255, 255, 0.1);
+        }
+
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border-radius: var(--radius-md);
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(0, 255, 255, 0.2);
+            color: var(--accent-cyan);
+        }
+
+        .alert {
+            padding: 0.875rem 1rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .alert-success {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            color: #4caf50;
+        }
+
+        .alert-error {
+            background: rgba(255, 82, 82, 0.1);
+            border: 1px solid rgba(255, 82, 82, 0.3);
+            color: #ff5252;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="profile-container">
+        <div class="profile-header">
+            <h1>👤 個人資料</h1>
+            <a href="{{ url_for('main.index') }}" class="btn btn-secondary">返回首頁</a>
+        </div>
+
+        <!-- 基本資訊 -->
+        <div class="profile-card">
+            <h2>基本資訊</h2>
+            <div class="info-row">
+                <span class="info-label">使用者 ID</span>
+                <span class="info-value">{{ current_user.id }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">使用者名稱</span>
+                <span class="info-value">{{ current_user.username }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">角色</span>
+                <span class="info-value">
+                    <span class="role-badge">{{ '管理員' if current_user.is_admin() else '使用者' }}</span>
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">建立時間</span>
+                <span class="info-value">{{ current_user.created_at[:10] if current_user.created_at else '-' }}</span>
+            </div>
+        </div>
+
+        <!-- 修改使用者名稱 -->
+        <div class="profile-card">
+            <h2>修改使用者名稱</h2>
+            <div id="usernameAlert" style="display: none;"></div>
+            <form id="changeUsernameForm">
+                <div class="form-group">
+                    <label for="new_username">新使用者名稱</label>
+                    <input type="text" id="new_username" name="new_username" placeholder="輸入新的使用者名稱" required>
+                </div>
+                <button type="submit" class="btn btn-primary">更新使用者名稱</button>
+            </form>
+        </div>
+
+        <!-- 修改密碼 -->
+        <div class="profile-card">
+            <h2>修改密碼</h2>
+            <div id="passwordAlert" style="display: none;"></div>
+            <form id="changePasswordForm">
+                <div class="form-group">
+                    <label for="current_password">當前密碼</label>
+                    <input type="password" id="current_password" name="current_password" required>
+                </div>
+                <div class="form-group">
+                    <label for="new_password">新密碼</label>
+                    <input type="password" id="new_password" name="new_password" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirm_password">確認新密碼</label>
+                    <input type="password" id="confirm_password" name="confirm_password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">更新密碼</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 修改使用者名稱
+        document.getElementById('changeUsernameForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const alertDiv = document.getElementById('usernameAlert');
+            const newUsername = document.getElementById('new_username').value;
+
+            try {
+                const response = await fetch('/profile/change-username', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_username: newUsername })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alertDiv.className = 'alert alert-success';
+                    alertDiv.textContent = data.message;
+                    alertDiv.style.display = 'block';
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    alertDiv.className = 'alert alert-error';
+                    alertDiv.textContent = data.error;
+                    alertDiv.style.display = 'block';
+                }
+            } catch (error) {
+                alertDiv.className = 'alert alert-error';
+                alertDiv.textContent = '更新失敗，請稍後再試';
+                alertDiv.style.display = 'block';
+            }
+        });
+
+        // 修改密碼
+        document.getElementById('changePasswordForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const alertDiv = document.getElementById('passwordAlert');
+            const currentPassword = document.getElementById('current_password').value;
+            const newPassword = document.getElementById('new_password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+
+            // 驗證新密碼
+            if (newPassword !== confirmPassword) {
+                alertDiv.className = 'alert alert-error';
+                alertDiv.textContent = '新密碼與確認密碼不符';
+                alertDiv.style.display = 'block';
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                alertDiv.className = 'alert alert-error';
+                alertDiv.textContent = '密碼長度至少需要 6 個字元';
+                alertDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch('/profile/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alertDiv.className = 'alert alert-success';
+                    alertDiv.textContent = data.message;
+                    alertDiv.style.display = 'block';
+                    document.getElementById('changePasswordForm').reset();
+                } else {
+                    alertDiv.className = 'alert alert-error';
+                    alertDiv.textContent = data.error;
+                    alertDiv.style.display = 'block';
+                }
+            } catch (error) {
+                alertDiv.className = 'alert alert-error';
+                alertDiv.textContent = '更新失敗，請稍後再試';
+                alertDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+
+</html>

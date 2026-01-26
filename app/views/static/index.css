@@ -1,30 +1,30 @@
 /* ========================================
-   加工鑄件即時看板 - 深色科技風格樣式
+   加工鑄件即時看板 - 淺色主題樣式
    ======================================== */
 
 :root {
-    /* 主色調 */
-    --bg-primary: #0a0e17;
-    --bg-secondary: #111827;
-    --bg-card: #1a2332;
-    --bg-card-hover: #243047;
+    /* 主色調 - 白色背景 */
+    --bg-primary: #f5f7fa;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f0f4f8;
 
     /* 強調色 */
-    --accent-blue: #3b82f6;
-    --accent-cyan: #22d3ee;
-    --accent-green: #10b981;
-    --accent-yellow: #f59e0b;
-    --accent-red: #ef4444;
-    --accent-purple: #8b5cf6;
+    --accent-blue: #2563eb;
+    --accent-cyan: #0891b2;
+    --accent-green: #059669;
+    --accent-yellow: #d97706;
+    --accent-red: #dc2626;
+    --accent-purple: #7c3aed;
 
-    /* 文字色 */
-    --text-primary: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
+    /* 文字色 - 深色文字 */
+    --text-primary: #1e293b;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
 
     /* 邊框 */
-    --border-color: #2d3a4f;
-    --border-glow: rgba(59, 130, 246, 0.3);
+    --border-color: #e2e8f0;
+    --border-glow: rgba(37, 99, 235, 0.2);
 
     /* 間距 */
     --spacing-xs: 0.5rem;
@@ -38,6 +38,7 @@
     --radius-md: 12px;
     --radius-lg: 16px;
 }
+
 
 * {
     margin: 0;
@@ -62,7 +63,7 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: var(--spacing-sm) var(--spacing-lg);
-    background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+    background: linear-gradient(135deg, #d4a5e8 0%, #c084d8 100%);
     border-bottom: 1px solid var(--border-color);
     position: sticky;
     top: 0;
@@ -72,16 +73,27 @@ body {
 .header-left {
     display: flex;
     align-items: center;
-    gap: var(--spacing-lg);
+    gap: var(--spacing-md);
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 50px;
+    min-height: 50px;
+}
+
+.company-logo {
+    max-height: 45px;
+    max-width: 120px;
+    object-fit: contain;
 }
 
 .header h1 {
     font-size: 1.5rem;
     font-weight: 700;
-    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #ffffff;
 }
 
 .main-nav {
@@ -118,6 +130,25 @@ body {
     border-radius: var(--radius-sm);
     font-size: 0.875rem;
     color: var(--text-secondary);
+}
+
+.lang-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+    font-family: inherit;
+    margin-right: var(--spacing-sm);
+}
+
+.lang-btn:hover {
+    color: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    background: rgba(34, 211, 238, 0.1);
 }
 
 .status-dot {
@@ -567,4 +598,60 @@ body {
     to {
         transform: rotate(360deg);
     }
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    backdrop-filter: blur(8px);
+}
+
+.modal-container {
+    background: #1a1a1a;
+    width: 90%;
+    max-width: 1100px;
+    max-height: 85vh;
+    border-radius: 16px;
+    border: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-body {
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 2rem;
+    cursor: pointer;
+}
+
+.inventory-item {
+    cursor: pointer;
+}
+
+.inventory-item:hover {
+    transform: translateY(-5px);
+    border-color: #00f2fe;
 }
