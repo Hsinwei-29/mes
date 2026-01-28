@@ -398,6 +398,19 @@
             </div>
             <div class="header-right">
                 <button id="langSwitch" class="lang-btn" onclick="toggleLanguage()">EN</button>
+                {% if current_user %}
+                <span class="lang-btn" style="margin-left: 0.5rem; cursor: default;">👤 {{ current_user }}</span>
+                {% if is_admin %}
+                <a href="{{ url_for('auth.admin_dashboard') }}" class="lang-btn" style="margin-left: 0.5rem;">🔐 管理員</a>
+                {% endif %}
+                <a href="{{ url_for('auth.logout') }}" class="lang-btn" style="margin-left: 0.5rem;">登出</a>
+                {% else %}
+                <a href="{{ url_for('auth.login') }}" class="lang-btn" style="margin-left: 0.5rem;">登入</a>
+                {% endif %}
+                <div class="update-info">
+                    <span class="status-dot"></span>
+                    <span id="lastUpdate">{{ timestamp }}</span>
+                </div>
             </div>
         </header>
 
@@ -409,6 +422,16 @@
 
         <!-- 編輯區域 -->
         <div class="editor-container">
+
+            {% if not is_logged_in %}
+            <div class="login-prompt">
+                <p>⚠️ 請先<a href="{{ url_for('auth.login') }}">登入</a>才能編輯數據</p>
+            </div>
+            {% elif not is_admin %}
+            <div class="login-prompt">
+                <p>⚠️ 僅管理員可編輯數據（當前用戶：{{ current_user }}）</p>
+            </div>
+            {% endif %}
 
             <table class="edit-table" id="editTable">
                 <thead>
@@ -433,12 +456,17 @@
                         {% else %}
                         <td>
                             <input type="number" class="edit-input" data-field="{{ header }}"
-                                value="{{ row[header] if row[header] else 0 }}" min="0">
+                                value="{{ row[header] if row[header] else 0 }}" min="0" {{ 'disabled' if not is_admin
+                                else '' }}>
                         </td>
                         {% endif %}
                         {% endfor %}
                         <td>
+                            {% if is_admin %}
                             <button class="save-btn" onclick="saveRow(&quot;{{ row['品號'] }}&quot;, this)">儲存</button>
+                            {% else %}
+                            <button class="save-btn" disabled style="opacity: 0.3; cursor: not-allowed;">儲存</button>
+                            {% endif %}
                         </td>
                         <td>
                             <button class="history-btn"
@@ -478,6 +506,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
         const partName = '{{ part_name }}';
+        const isAdmin = {{ 'true' if is_admin else 'false' }};
+        const isLoggedIn = {{ 'true' if is_logged_in else 'false' }};
+
         // 自動計算總數
         document.addEventListener('DOMContentLoaded', function () {
             const tableBody = document.getElementById('editTableBody');
@@ -543,7 +574,23 @@
             }
         }
 
+
         function saveRow(itemId, btn) {
+            console.log('[SAVE] Starting save for:', itemId);
+            console.log('[SAVE] isLoggedIn:', isLoggedIn, 'isAdmin:', isAdmin);
+
+            // 檢查權限
+            if (!isLoggedIn) {
+                console.error('[SAVE] Not logged in!');
+                alert('請先登入才能編輯數據');
+                return;
+            }
+            if (!isAdmin) {
+                console.error('[SAVE] Not admin!');
+                alert('僅管理員可編輯數據');
+                return;
+            }
+
             const row = btn.closest('tr');
             const inputs = row.querySelectorAll('.edit-input');
             const updates = {};
@@ -577,6 +624,7 @@
                     btn.disabled = false;
                 });
         }
+
 
         function addHistoryItem(data) {
             const list = document.getElementById('historyList');

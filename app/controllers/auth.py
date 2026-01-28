@@ -27,7 +27,13 @@ def login():
         user = User.get_by_username(username)
         
         if user and user.check_password(password):
-            login_user(user)
+            login_user(user, remember=True)  # 啟用 remember me
+            from flask import session
+            session.permanent = True  # 確保 session 持久化
+            # 設置 session 變數供 API 使用
+            session['user_id'] = user.id
+            session['username'] = user.username
+            session['role'] = user.role
             next_page = request.args.get('next')
             return redirect(next_page or url_for('main.index'))
         else:

@@ -19,8 +19,14 @@ def create_app(config_name='default'):
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
     app.config['CASTING_FILE'] = '鑄件盤點資料.xlsx'
     
-    # 啟用 CORS
-    CORS(app)
+    # Session 配置 - 使用 Cookie-based sessions
+    app.config['SESSION_COOKIE_SECURE'] = False  # 開發環境設為 False，生產環境應設為 True
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+    
+    # 啟用 CORS with credentials support
+    CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
     
     # 初始化 SocketIO
     socketio.init_app(app, cors_allowed_origins="*")

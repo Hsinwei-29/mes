@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
 from datetime import datetime
 from ..models.inventory import load_casting_inventory, get_part_details, update_cell, get_edit_history
 from ..models.order import load_orders
@@ -60,12 +60,39 @@ def api_part_details(part_type):
 def api_update_inventory(part_type):
     """更新鑄件製程數據"""
     try:
+        from flask_login import current_user
+        
+        # 檢查用戶是否登入 (支援兩種方式)
+        is_logged_in = False
+        username = None
+        user_role = None
+        
+        # 方式1: 檢查 Flask-Login
+        if current_user.is_authenticated:
+            is_logged_in = True
+            username = current_user.username
+            user_role = current_user.role
+            # 同步到 session
+            session['user_id'] = current_user.id
+            session['username'] = current_user.username
+            session['role'] = current_user.role
+        # 方式2: 檢查 session
+        elif 'user_id' in session:
+            is_logged_in = True
+            username = session.get('username', '系統使用者')
+            user_role = session.get('role')
+        
+        if not is_logged_in:
+            return jsonify({'success': False, 'error': '請先登入'}), 401
+        
+        if user_role != 'admin':
+            return jsonify({'success': False, 'error': '僅管理員可編輯數據'}), 403
+        
         data = request.get_json()
         item_id = data.get('item_id')
         updates = data.get('updates', {})
         
-        # 使用固定的使用者名稱
-        username = '系統使用者'
+        # 使用已驗證的使用者名稱
         
         results = []
         for field, new_value in updates.items():
