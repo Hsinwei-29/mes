@@ -79,56 +79,30 @@ def load_casting_inventory():
             try:
                 df = pd.read_excel(xl, sheet_name=sheet_idx)
                 
-                # 找出所有數字列
-                numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+                # 取得成品欄位索引 (ByName logic)
+                config = CONFIGS.get(part_name, [])
+                finished_col_idx = None
+                for label, idx in config:
+                    if label in ['成品', '成品研磨']:
+                        finished_col_idx = idx
+                        break
                 
-                # 排除品號列（第一個數字列，值通常很大）
-                sum_cols = []
-                for col in numeric_cols:
-                    # 跳過 Unnamed 列
-                    if 'Unnamed' in str(col):
-                        continue
-                    
-                    # 檢查該列的最大值，如果超過 1000000，可能是品號
-                    max_val = df[col].max()
-                    if pd.notna(max_val) and max_val > 1000000:
-                        continue
-                    
-                    # 檢查該列是否有實際數據（不全是 NaN 或 0）
-                    col_sum = df[col].sum()
-                    if pd.isna(col_sum):
-                        continue
-                        
-                    sum_cols.append(col)
-                
-                # 計算總數
-                total = 0
-                for col in sum_cols:
-                    col_sum = df[col].sum()
-                    if not pd.isna(col_sum):
-                        total += col_sum
-                
-                inventory[part_name] = int(total) if total > 0 else 0
-                
-                # 提取機型詳細資料
+                # 初始化該料件的總數
+                part_total = 0
+
+                # 提取機型詳細資料並累加總數
                 if '機型' in df.columns:
-                    # 取得成品欄位索引（總數前一個欄位）
-                    config = CONFIGS.get(part_name, [])
-                    finished_col_idx = None
-                    if len(config) >= 2:
-                        # 取倒數第二個配置（總數前一個，即成品）
-                        finished_col_idx = config[-2][1]
-                    
                     for _, row in df.iterrows():
                         model = row.get('機型', '')
-                        if pd.notna(model) and str(model).strip():
+                        # 排除無效機型
+                        if pd.notna(model) and str(model).strip() and str(model).strip() != '品號':
                             model_str = str(model).strip()
                             
                             # 初始化該機型的數據
                             if model_str not in all_models:
                                 all_models[model_str] = {'機型': model_str, '工作台': 0, '底座': 0, '橫樑': 0, '立柱': 0}
                             
-                            # 使用成品欄位的數量
+                            # 取得成品數量
                             finished_value = 0
                             if finished_col_idx is not None:
                                 val = row.iloc[finished_col_idx]
@@ -138,7 +112,14 @@ def load_casting_inventory():
                                     except:
                                         finished_value = 0
                             
-                            all_models[model_str][part_name] = finished_value
+                            # 累加到總表 (使用 += 處理重複出現的機型)
+                            all_models[model_str][part_name] += finished_value
+                            
+                            # 累加到該料件總數
+                            part_total += finished_value
+                
+                # 設定該料件的總庫存
+                inventory[part_name] = part_total
                 
             except Exception as e:
                 print(f"Error loading {part_name}: {e}")

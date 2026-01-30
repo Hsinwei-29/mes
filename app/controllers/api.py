@@ -152,3 +152,49 @@ def api_history_stats(part_type):
     from ..models.inventory import get_history_stats
     stats = get_history_stats(part_type)
     return jsonify(stats)
+
+@api_bp.route('/shortage')
+def api_shortage():
+    """缺料分析 API"""
+    from ..models.shortage import calculate_shortage
+    
+    try:
+        shortage_list = calculate_shortage()
+        
+        # 統計資訊
+        total_records = len(shortage_list)
+        shortage_count = len([x for x in shortage_list if x['缺料數量'] > 0])
+        
+        # 按零件類型統計
+        part_stats = {}
+        for part_type in ['工作台', '底座', '橫樑', '立柱']:
+            type_records = [x for x in shortage_list if x['零件類型'] == part_type]
+            type_shortage = [x for x in type_records if x['缺料數量'] > 0]
+            part_stats[part_type] = {
+                'total': len(type_records),
+                'shortage': len(type_shortage)
+            }
+            
+        # 取得庫存總覽
+        from ..models.inventory import load_casting_inventory
+        inventory_data = load_casting_inventory()
+        inventory_summary = inventory_data.get('summary', {})
+        
+        return jsonify({
+            'success': True,
+            'data': shortage_list,
+            'stats': {
+                'total_records': total_records,
+                'shortage_count': shortage_count,
+                'sufficient_count': total_records - shortage_count,
+                'part_stats': part_stats,
+                'inventory_summary': inventory_summary
+            },
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+

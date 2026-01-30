@@ -6,6 +6,20 @@
       "password_hash": "scrypt:32768:8:1$cPA2SQX2BUj3WQSq$b8ad05fcdb484b80824692ae628bf169d1bf989d515373643389d0be296c7325396c265ee420e72d9276597398dcfa99545ad2bc6662b637071d8c4141619cfe",
       "role": "admin",
       "created_at": "2026-01-26T23:20:39.244273"
+    },
+    {
+      "id": "2",
+      "username": "趙銘傑",
+      "password_hash": "scrypt:32768:8:1$TGBJw7erO6FMJRLE$201b547ee6c559f4be92fef0808cb3dcf6690148311635e4312512d8ea2a0778303a10d679eb50869b6cb28fbe5ecac0bcfdc3418d1a0ccc7b8d841818fc1a00",
+      "role": "admin",
+      "created_at": "2026-01-30T22:49:18.024832"
+    },
+    {
+      "id": "3",
+      "username": "guang",
+      "password_hash": "scrypt:32768:8:1$aCce7FsomhR6mnXK$ef2a9590156de8eadd81bc9070413ef4f543a9f2f9ea6b9900031d1a92dff41d5195ee694f62a08a8188276d4b2700bc1a36dd7f8b87e5d74b54fc44a62343bd",
+      "role": "admin",
+      "created_at": "2026-01-30T23:11:25.368416"
     }
   ]
 }

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>缺料分析 - 協鴻工業</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        .shortage-container {
+            padding: 2rem;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card.shortage {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .stat-card.sufficient {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 1;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .filters {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-group label {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 0.5rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: border-color 0.3s;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .shortage-table-wrapper {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .shortage-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .shortage-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .shortage-table th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .shortage-table tbody tr {
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s;
+        }
+
+        .shortage-table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .shortage-table td {
+            padding: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .status-shortage {
+            background-color: #fee;
+            color: #c00;
+        }
+
+        .status-sufficient {
+            background-color: #efe;
+            color: #0a0;
+        }
+
+        .status-exact {
+            background-color: #fef;
+            color: #909;
+        }
+
+        .part-icon {
+            font-size: 1.2rem;
+            margin-right: 0.5rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+        }
+
+        .export-btn {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard">
+        <!-- 頂部標題列 -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo-area">
+                    <img src="{{ url_for('static', filename='logo.jpg') }}" alt="協鴻" class="company-logo"
+                        onerror="this.style.display='none'">
+                </div>
+                <h1>協鴻工業 加工鑄件看板系統</h1>
+                <nav class="main-nav">
+                    <a href="{{ url_for('main.index') }}" class="nav-link">庫存看板</a>
+                    <a href="{{ url_for('main.orders_page') }}" class="nav-link">工單需求</a>
+                    <a href="{{ url_for('main.shortage_page') }}" class="nav-link active">缺料分析</a>
+                </nav>
+            </div>
+            <div class="header-right">
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('auth.profile') }}" class="lang-btn">⚙️ 個人資料</a>
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('auth.admin_dashboard') }}" class="lang-btn" style="margin-left: 0.5rem;">👤 管理員</a>
+                {% endif %}
+                <a href="{{ url_for('auth.logout') }}" class="lang-btn" style="margin-left: 0.5rem;">登出</a>
+                {% else %}
+                <a href="{{ url_for('auth.login') }}" class="lang-btn">登入</a>
+                {% endif %}
+                <div class="update-info">
+                    <span class="status-dot"></span>
+                    <span id="lastUpdate">載入中...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主要內容區 -->
+        <main class="shortage-container">
+            <h2 style="margin-bottom: 1.5rem; color: #333;">📊 缺料分析</h2>
+
+            <!-- 庫存總覽卡片 -->
+            <h3 style="margin-bottom: 1rem; color: #333; font-size: 1.1rem;">📦 鑄件庫存總覽</h3>
+            <div class="stats-grid" style="margin-bottom: 2rem;">
+                <div class="stat-card" style="background: white; border: 2px solid #e0e0e0; color: #333;">
+                    <div class="stat-label" style="color: #666;">
+                        <span class="part-icon">🔳</span>工作台
+                    </div>
+                    <div class="stat-value" id="stockWorktable" style="color: #0088cc;">-</div>
+                </div>
+                <div class="stat-card" style="background: white; border: 2px solid #e0e0e0; color: #333;">
+                    <div class="stat-label" style="color: #666;">
+                        <span class="part-icon">🔲</span>底座
+                    </div>
+                    <div class="stat-value" id="stockBase" style="color: #0088cc;">-</div>
+                </div>
+                <div class="stat-card" style="background: white; border: 2px solid #e0e0e0; color: #333;">
+                    <div class="stat-label" style="color: #666;">
+                        <span class="part-icon">📏</span>橫樑
+                    </div>
+                    <div class="stat-value" id="stockCrossbeam" style="color: #0088cc;">-</div>
+                </div>
+                <div class="stat-card" style="background: white; border: 2px solid #e0e0e0; color: #333;">
+                    <div class="stat-label" style="color: #666;">
+                        <span class="part-icon">🏛️</span>立柱
+                    </div>
+                    <div class="stat-value" id="stockColumn" style="color: #0088cc;">-</div>
+                </div>
+            </div>
+
+            <h3 style="margin-bottom: 1rem; color: #333; font-size: 1.1rem;">📊 缺料統計</h3>
+            <!-- 統計卡片 -->
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-label">總記錄數</div>
+                    <div class="stat-value" id="totalRecords">-</div>
+                </div>
+                <div class="stat-card shortage">
+                    <div class="stat-label">缺料項目</div>
+                    <div class="stat-value" id="shortageCount">-</div>
+                </div>
+                <div class="stat-card sufficient">
+                    <div class="stat-label">充足項目</div>
+                    <div class="stat-value" id="sufficientCount">-</div>
+                </div>
+            </div>
+
+            <!-- 篩選器 -->
+            <div class="filters">
+                <div class="filter-group">
+                    <label>零件類型：</label>
+                    <select id="filterPartType">
+                        <option value="">全部</option>
+                        <option value="工作台">工作台</option>
+                        <option value="底座">底座</option>
+                        <option value="橫樑">橫樑</option>
+                        <option value="立柱">立柱</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>狀態：</label>
+                    <select id="filterStatus">
+                        <option value="">全部</option>
+                        <option value="缺料" selected>缺料</option>
+                        <option value="充足">充足</option>
+                        <option value="剛好">剛好</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>搜尋：</label>
+                    <input type="text" id="searchInput" placeholder="工單號碼、客戶、品號...">
+                </div>
+                <button class="export-btn" onclick="exportToExcel()">📥 匯出 Excel</button>
+            </div>
+
+            <!-- 資料表 -->
+            <div class="shortage-table-wrapper">
+                <table class="shortage-table">
+                    <thead>
+                        <tr>
+                            <th>工單號碼</th>
+                            <th>客戶名稱</th>
+                            <th>生產開始</th>
+                            <th>生產結束</th>
+                            <th>品號</th>
+                            <th>物料說明</th>
+                            <th>零件類型</th>
+                            <th>需求數量</th>
+                            <th>已領料</th>
+                            <th>目前缺料</th>
+                            <th>現有庫存</th>
+                            <th>缺料數量</th>
+                            <th>狀態</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shortageTableBody">
+                        <tr>
+                            <td colspan="13" class="loading">載入中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let allData = [];
+        // Removed partIcons object as it is no longer needed
+
+        // 載入資料
+        async function loadShortageData() {
+            try {
+                const response = await fetch('/api/shortage');
+                const result = await response.json();
+
+                if (result.success) {
+                    allData = result.data;
+
+                    // 前端強制排序：生產開始日期最早的排最上面
+                    allData.sort((a, b) => {
+                        // 處理日期格式，如果是 null 則排到最後
+                        const dateA = a.生產開始 ? new Date(a.生產開始) : new Date('9999-12-31');
+                        const dateB = b.生產開始 ? new Date(b.生產開始) : new Date('9999-12-31');
+
+                        // 日期升序 (最早的在前面)
+                        if (dateA < dateB) return -1;
+                        if (dateA > dateB) return 1;
+
+                        // 日期相同，則缺料數量多的排前面
+                        return b.缺料數量 - a.缺料數量;
+                    });
+
+                    updateStats(result.stats);
+                    // 初始載入時直接套用篩選 (預設已選中小於0的)
+                    filterData();
+                    document.getElementById('lastUpdate').textContent = `更新時間: ${result.timestamp}`;
+                } else {
+                    showError(result.error);
+                }
+            } catch (error) {
+                showError('載入資料失敗: ' + error.message);
+            }
+        }
+
+        // 更新統計卡片
+        function updateStats(stats) {
+            document.getElementById('totalRecords').textContent = stats.total_records;
+            document.getElementById('shortageCount').textContent = stats.shortage_count;
+            document.getElementById('sufficientCount').textContent = stats.sufficient_count;
+
+            // 更新庫存總覽
+            if (stats.inventory_summary) {
+                document.getElementById('stockWorktable').textContent = stats.inventory_summary['工作台'] || 0;
+                document.getElementById('stockBase').textContent = stats.inventory_summary['底座'] || 0;
+                document.getElementById('stockCrossbeam').textContent = stats.inventory_summary['橫樑'] || 0;
+                document.getElementById('stockColumn').textContent = stats.inventory_summary['立柱'] || 0;
+            }
+        }
+
+        // 渲染表格
+        function renderTable(data) {
+            const tbody = document.getElementById('shortageTableBody');
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="13" class="no-data">沒有符合條件的資料</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(item => `
+                <tr>
+                    <td>${item.工單號碼}</td>
+                    <td>${item.客戶名稱}</td>
+                    <td>${formatDate(item.生產開始)}</td>
+                    <td>${formatDate(item.生產結束)}</td>
+                    <td><code>${item.品號}</code></td>
+                    <td>${item.物料說明}</td>
+                    <td>${item.零件類型}</td>
+                    <td>${item.需求數量}</td>
+                    <td>${item.已領料}</td>
+                    <td><strong>${item.目前缺料}</strong></td>
+                    <td>${item.現有庫存}</td>
+                    <td><strong style="color: ${item.缺料數量 > 0 ? '#c00' : '#0a0'}">${item.缺料數量}</strong></td>
+                    <td><span class="status-badge status-${item.狀態 === '缺料' ? 'shortage' : item.狀態 === '充足' ? 'sufficient' : 'exact'}">${item.狀態}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // 格式化日期
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('zh-TW');
+        }
+
+        // 篩選資料
+        function filterData() {
+            const partType = document.getElementById('filterPartType').value;
+            const status = document.getElementById('filterStatus').value;
+            const search = document.getElementById('searchInput').value.toLowerCase();
+
+            let filtered = allData;
+
+            if (partType) {
+                filtered = filtered.filter(item => item.零件類型 === partType);
+            }
+
+            if (status) {
+                filtered = filtered.filter(item => item.狀態 === status);
+            }
+
+            if (search) {
+                filtered = filtered.filter(item =>
+                    item.工單號碼.toLowerCase().includes(search) ||
+                    item.客戶名稱.toLowerCase().includes(search) ||
+                    item.品號.toLowerCase().includes(search) ||
+                    item.物料說明.toLowerCase().includes(search)
+                );
+            }
+
+            renderTable(filtered);
+        }
+
+        // 匯出 Excel
+        function exportToExcel() {
+            window.location.href = '/api/shortage/export';
+        }
+
+        // 顯示錯誤
+        function showError(message) {
+            const tbody = document.getElementById('shortageTableBody');
+            tbody.innerHTML = `<tr><td colspan="13" class="no-data" style="color: #c00;">錯誤: ${message}</td></tr>`;
+        }
+
+        // 事件監聽
+        document.getElementById('filterPartType').addEventListener('change', filterData);
+        document.getElementById('filterStatus').addEventListener('change', filterData);
+        document.getElementById('searchInput').addEventListener('input', filterData);
+
+        // 初始載入
+        loadShortageData();
+
+        // 每30秒自動更新
+        setInterval(loadShortageData, 30000);
+    </script>
+</body>
+
+</html>

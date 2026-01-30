@@ -50,3 +50,9 @@ def casting_page(part_type):
                           is_admin=is_admin,
                           current_user=username,
                           timestamp=timestamp)
+
+@main_bp.route('/shortage')
+def shortage_page():
+    """缺料分析頁面"""
+    return render_template('main/shortage.html')
+

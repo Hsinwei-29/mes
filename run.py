@@ -20,10 +20,10 @@ if __name__ == '__main__':
     print("[MVC Mode] 加工鑄件即時看板伺服器 (WebSocket Enabled)")
     print("=" * 60)
     print(f"[OK] 伺服器已啟動！")
-    print(f"Local URL: http://localhost:5001")
-    print(f"LAN URL: http://{local_ip}:5001")
+    print(f"Local URL: http://localhost:5009")
+    print(f"LAN URL: http://{local_ip}:5009")
     print("=" * 60)
     print("按 Ctrl+C 停止伺服器")
     
     # 使用 SocketIO 啟動 (支援 WebSocket)
-    socketio.run(app, host='0.0.0.0', port=5001, debug=False, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=5009, debug=False, allow_unsafe_werkzeug=True)

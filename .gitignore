@@ -36,3 +36,10 @@ EC55E000
 # OS
 .DS_Store
 Thumbs.db
+
+# Large binaries and reports
+cloudflared.exe
+sheets_output.txt
+缺料分析報表_*.xlsx
+app/views/static/~*
+[0-9A-F]*000
