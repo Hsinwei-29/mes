@@ -1,50 +1,38 @@
-venv/# Python
+# 測試和除錯檔案
+*.pyc
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
-venv/
-env/
-*.egg-info/
-dist/
-build/
+
+# 測試腳本
+test_*.py
+check_*.py
+verify_*.py
+debug_*.py
+analyze_*.py
+search_*.py
+read_casting_data.py
+
+# 臨時檔案
+*.bat
+open_fresh.bat
+
+# 記憶體傾印檔案
+5A8A2000
+7E67E000
+EC55E000
 
 # IDE
 .vscode/
 .idea/
-*.swp
-*.swo
+
+# 環境變數
+.env
+.env.local
+
+# 日誌檔案
+*.log
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Application specific
-logs/
-*.log
-users.json
-
-# Test and debug files
-test_*.py
-debug_*.py
-check_*.py
-diagnose_*.py
-new_inventory_loader.py
-*_backup_*.py
-sheets_output.txt
-casting_page_output.html
-
-# Large binaries
-cloudflared.exe
-*.exe
-
-# Temporary files
-27606000
-676BB000
-87BC5000
-A4DE5000
-C5026000
-~*.jpg
-~*.png
-l 範例檔案也同步，請刪除上面的 *.xlsx 和 *.xls

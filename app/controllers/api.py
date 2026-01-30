@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from datetime import datetime
-from ..models.inventory import load_casting_inventory, get_part_details, update_cell, get_edit_history
+from ..models.inventory import load_casting_inventory, get_part_details, update_cell, get_edit_history, get_zero_inventory_models
 from ..models.order import load_orders
 from .. import socketio
 
@@ -51,6 +51,16 @@ def api_summary():
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     })
 
+@api_bp.route('/inventory/zero-stock')
+def api_zero_stock():
+    """獲取總數為0的鑄件機型"""
+    zero_models = get_zero_inventory_models()
+    return jsonify({
+        'zero_models': zero_models,
+        'count': len(zero_models),
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    })
+
 @api_bp.route('/inventory/details/<part_type>')
 def api_part_details(part_type):
     data = get_part_details(part_type)
@@ -90,18 +100,22 @@ def api_update_inventory(part_type):
         
         data = request.get_json()
         item_id = data.get('item_id')
+        model_name = data.get('model_name')
         updates = data.get('updates', {})
         
         # 使用已驗證的使用者名稱
         
         results = []
         for field, new_value in updates.items():
-            result = update_cell(part_type, item_id, field, new_value, username)
+            result = update_cell(part_type, item_id, field, new_value, username, model_name=model_name)
             if result.get('success'):
+                # 使用更新後的 item_id (如果有的話)
+                actual_item_id = result.get('item_id', item_id)
+                
                 # 透過 SocketIO 廣播更新
                 socketio.emit('data_updated', {
                     'part': part_type,
-                    'item_id': item_id,
+                    'item_id': actual_item_id,
                     'field': field,
                     'old_value': result.get('old_value'),
                     'new_value': new_value,
@@ -109,6 +123,8 @@ def api_update_inventory(part_type):
                     'user': username,
                     'timestamp': datetime.now().strftime('%H:%M:%S')
                 })
+                # 在結果中包含更新後的品號
+                result['item_id'] = actual_item_id
                 results.append(result)
             else:
                 return jsonify({'success': False, 'error': result.get('error')})

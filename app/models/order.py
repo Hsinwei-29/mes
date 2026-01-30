@@ -83,7 +83,8 @@ def load_orders():
         KW_WO = ["工單", "號碼", "u", "W", "序號", "編號", "u"]
         KW_ORDER = ["訂單", "q", "q"]
         KW_CUST = ["客戶", "U", "U"]
-        KW_DESC = ["品號", "說明", "~", "~"]
+        KW_MATERIAL = ["物料品號"]  # 精確匹配物料品號
+        KW_DESC = ["品號說明"]  # 精確匹配品號說明
         KW_START = ["開始", "Ͳ", "Ͳ"]
         KW_END = ["結束", "Term", "Ͳ"]
 
@@ -92,13 +93,16 @@ def load_orders():
             
             df = pd.read_excel(xl, sheet_name=sheet_name)
             
-            # 定位欄位
+            # 定位欄位 - 直接使用準確的欄位名稱
             col_wo = find_col(df, KW_WO)
             col_order = find_col(df, KW_ORDER)
             col_cust = find_col(df, KW_CUST)
-            col_desc = find_col(df, KW_DESC)
-            col_start = find_col(df, KW_START)
-            col_end = find_col(df, KW_END)
+            col_material = '物料品號' if '物料品號' in df.columns else None  # 直接指定
+            col_desc = '品號說明' if '品號說明' in df.columns else None  # 直接指定
+            col_start = '生產開始' if '生產開始' in df.columns else None  # 直接指定
+            col_end = '生產結束' if '生產結束' in df.columns else None  # 直接指定
+            col_elec = '電控外包' if '電控外包' in df.columns else None  # 工廠分類用
+            col_paint = '噴漆外包' if '噴漆外包' in df.columns else None  # 工廠分類用
             
             if col_start and col_start == col_end:
                 for c in df.columns:
@@ -115,8 +119,15 @@ def load_orders():
                     
                     if not wo_str and not order_str: continue
                     
-                    # 用戶要求：僅保留 10000 開頭的工單
-                    if not wo_str.startswith("10000"): continue
+                    # 過濾條件1：排除異常工單
+                    if wo_str.startswith("70000"): continue  # 排除 70000 開頭
+                    if any(k in wo_str for k in ['紅色', '黃色', '已出貨', '改單']): continue  # 排除顏色標記
+                    if not wo_str.replace('.', '').isdigit(): continue  # 只保留數字工單號碼
+                    
+                    # 過濾條件2：必須有訂單號碼或客戶名稱
+                    cust_val = row.get(col_cust) if col_cust else None
+                    if not order_str and (not cust_val or pd.isna(cust_val) or str(cust_val).strip() == ''):
+                        continue  # 沒有訂單號碼且沒有客戶名稱，跳過
                     
                     # 建立唯一識別碼
                     id_key = wo_str
@@ -142,11 +153,38 @@ def load_orders():
                         try: need_date_display = min(picking_dates).strftime('%Y-%m-%d')
                         except: pass
 
+                    # 提取物料品號（正確格式化，避免科學記號）
+                    material_id = ""
+                    if col_material and pd.notna(row.get(col_material)):
+                        try:
+                            val = row.get(col_material)
+                            # 轉換為整數再轉字串，避免科學記號
+                            material_id = str(int(float(val)))
+                        except:
+                            material_id = str(val)[:20]
+                    
+                    # 提取品號說明
+                    material_desc = ""
+                    if col_desc and pd.notna(row.get(col_desc)):
+                        material_desc = str(row.get(col_desc))
+                    
+                    # 工廠分類邏輯
+                    # 三廠：電控外包='裝三課' 或 噴漆外包='噴6'
+                    # 本廠：其他所有工單
+                    factory = 'main'  # 預設為本廠
+                    elec_val = str(row.get(col_elec)) if col_elec and pd.notna(row.get(col_elec)) else ''
+                    paint_val = str(row.get(col_paint)) if col_paint and pd.notna(row.get(col_paint)) else ''
+                    
+                    if '裝三課' in elec_val or '噴6' in paint_val:
+                        factory = 'factory3'
+                    
                     all_parsed_orders.append({
                         '工單': wo_str if wo_str else "-",
                         '訂單': order_str,
                         '客戶': str(row.get(col_cust))[:20] if col_cust and pd.notna(row.get(col_cust)) else "",
-                        '品號說明': str(row.get(col_desc)) if col_desc and pd.notna(row.get(col_desc)) else "",
+                        '工廠': factory,  # 新增工廠欄位
+                        '物料品號': material_id,
+                        '品號說明': material_desc,
                         '生產開始': safe_date_str(row.get(col_start)) if col_start else "",
                         '生產結束': safe_date_str(row.get(col_end)) if col_end else "",
                         '需求日期': need_date_display,
@@ -157,19 +195,11 @@ def load_orders():
                     })
                 except: continue
 
-        # 排序：進行中優先 (權重 0)，已完成在後 (權重 1)，並依結束日期排序
+        # 排序：按工單號碼降序排列（新工單在前）
+        all_parsed_orders.sort(key=lambda o: o['工單'], reverse=True)
+        
+        # 計算統計資料
         today_str = datetime.now().strftime('%Y-%m-%d')
-        def get_sort_weight(o):
-            is_active = o['生產結束'] >= today_str if o['生產結束'] else False
-            # 進行中為 0, 已完成為 1
-            status_weight = 0 if is_active else 1
-            # 日期排序：
-            # 進行中：日期越近(小)越前
-            # 已完成：日期越遠(大)越前 (可選)
-            date_val = o['生產結束'] if o['生產結束'] else '9999-12-31'
-            return (status_weight, date_val)
-
-        all_parsed_orders.sort(key=get_sort_weight)
 
         total_demand = {'底座': 0, '工作台': 0, '橫樑': 0, '立柱': 0}
         for o in all_parsed_orders:

@@ -5,6 +5,10 @@
 const API_BASE = '';
 let currentLang = 'zh'; // 預設語言
 
+// 工廠篩選全域變數
+let allOrders = [];  // 儲存所有工單資料
+let currentFactory = 'all';  // 當前選中的工廠
+
 // 翻譯字典
 const TRANSLATIONS = {
     zh: {
@@ -243,6 +247,12 @@ async function loadDashboardData() {
 
         // 庫存明細 - 只有首頁
         if (document.getElementById('detailsTableBody')) {
+            const count = data.inventory_details ? data.inventory_details.length : 0;
+            const titleEl = document.getElementById('titleDetails');
+            if (titleEl) {
+                const baseTitle = t('TITLE_DETAILS');
+                titleEl.innerHTML = `${baseTitle} <span class="badge" style="background: var(--accent-blue); font-size: 0.8rem; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">${count}</span>`;
+            }
             renderInventoryDetails(data.inventory_details);
         }
 
@@ -257,7 +267,11 @@ async function loadDashboardData() {
 
         // 工單表格 - 只有工單頁
         if (document.getElementById('ordersTableBody')) {
-            renderOrdersTable(ordersData.orders);
+            allOrders = ordersData.orders || [];  // 儲存所有工單
+            updateFactoryCounts();  // 更新工廠計數器
+            const filteredOrders = filterOrdersByFactory(currentFactory);
+            renderOrdersTable(filteredOrders);
+            updateOrderStats(filteredOrders);  // 更新統計（使用篩選後的資料）
         }
 
         // 更新時間戳
@@ -272,6 +286,116 @@ async function loadDashboardData() {
             document.getElementById('lastUpdate').textContent = t('LOAD_FAILED');
         }
     }
+}
+
+// ==================== 工廠篩選函數 ====================
+
+/**
+ * 載入並顯示零庫存警示
+ */
+async function loadZeroStockAlert() {
+    try {
+        const response = await fetch(`${API_BASE}/api/inventory/zero-stock`);
+        const data = await response.json();
+
+        const zeroModels = data.zero_models || [];
+
+        if (zeroModels.length > 0) {
+            // 創建警示橫幅
+            const factorySection = document.querySelector('.factory-selector-section');
+            if (factorySection) {
+                // 創建警示元素
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'zero-stock-alert';
+                alertDiv.innerHTML = `
+                    <div class="alert-header">
+                        <span class="alert-icon">⚠️</span>
+                        <strong>零庫存鑄件警示</strong>
+                        <span class="alert-count">${zeroModels.length} 個機型</span>
+                    </div>
+                    <div class="alert-body">
+                        <div class="zero-stock-list">
+                            ${zeroModels.slice(0, 30).map(m => `<span class="zero-stock-item">${m.機型}</span>`).join('')}
+                            ${zeroModels.length > 30 ? `<span class="zero-stock-more">... 及其他 ${zeroModels.length - 30} 個</span>` : ''}
+                        </div>
+                    </div>
+                `;
+
+                // 插入到工廠選擇器之前
+                factorySection.parentNode.insertBefore(alertDiv, factorySection);
+            }
+        }
+    } catch (error) {
+        console.error('載入零庫存警示失敗:', error);
+    }
+}
+
+/**
+ * 切換工廠視圖
+ */
+function switchFactory(factory) {
+    currentFactory = factory;
+
+    // 更新卡片選中狀態
+    document.querySelectorAll('.factory-card').forEach(card => {
+        card.classList.remove('active');
+    });
+    const selectedCard = document.querySelector(`[data-factory="${factory}"]`);
+    if (selectedCard) {
+        selectedCard.classList.add('active');
+    }
+
+    // 篩選並重新渲染
+    const filteredOrders = filterOrdersByFactory(factory);
+    renderOrdersTable(filteredOrders);
+    updateOrderStats(filteredOrders);
+}
+
+/**
+ * 根據工廠篩選工單
+ */
+function filterOrdersByFactory(factory) {
+    if (factory === 'all') {
+        return allOrders;
+    }
+    return allOrders.filter(order => order.工廠 === factory);
+}
+
+/**
+ * 更新工廠計數器
+ */
+function updateFactoryCounts() {
+    const all = allOrders.length;
+    const main = allOrders.filter(o => o.工廠 === 'main').length;
+    const factory3 = allOrders.filter(o => o.工廠 === 'factory3').length;
+
+    const countAll = document.getElementById('countAll');
+    const countMain = document.getElementById('countMain');
+    const countFactory3 = document.getElementById('countFactory3');
+
+    if (countAll) countAll.textContent = all;
+    if (countMain) countMain.textContent = main;
+    if (countFactory3) countFactory3.textContent = factory3;
+}
+
+/**
+ * 更新工單統計（根據篩選後的資料）
+ */
+function updateOrderStats(orders) {
+    const today = new Date();
+    const inProgress = orders.filter(o => {
+        const endDate = o.生產結束 ? new Date(o.生產結束) : null;
+        return !endDate || endDate >= today;
+    }).length;
+    const completed = orders.length - inProgress;
+
+    const stats = {
+        total: orders.length,
+        in_progress: inProgress,
+        completed: completed
+    };
+
+    renderOrdersStats(stats);
 }
 
 /**
@@ -393,7 +517,7 @@ function renderOrdersTable(orders) {
     if (!tbody) return;
 
     if (!orders || orders.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="loading">${t('NO_ORDERS')}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="loading">${t('NO_ORDERS')}</td></tr>`;
         return;
     }
 
@@ -408,7 +532,8 @@ function renderOrdersTable(orders) {
         return `
             <tr>
                 <td>${order.工單 || ''}</td>
-                <td title="${order.品號說明 || ''}">${order.品號說明 || '-'}</td>
+                <td title="${order.物料品號 || ''}">${order.物料品號 || '-'}</td>
+                <td title="${order.品號說明 || ''}">${truncateText(order.品號說明 || '-', 20)}</td>
                 <td title="${order.客戶 || ''}">${truncateText(order.客戶, 15)}</td>
                 <td>${order.生產開始 || '-'}</td>
                 <td>${order.生產結束 || '-'}</td>
@@ -450,7 +575,10 @@ function renderInventoryDetails(details) {
  * 格式化數量顯示
  */
 function formatCount(count) {
-    if (!count || count === 0) {
+    if (count === 0 || count === '0') {
+        return '<span style="color: var(--text-muted)">0</span>';
+    }
+    if (!count) {
         return '<span style="color: var(--text-muted)">-</span>';
     }
     return `<span style="color: var(--accent-cyan)">${count}</span>`;

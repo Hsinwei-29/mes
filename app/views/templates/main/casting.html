@@ -463,14 +463,14 @@
                         {% endfor %}
                         <td>
                             {% if is_admin %}
-                            <button class="save-btn" onclick="saveRow(&quot;{{ row['品號'] }}&quot;, this)">儲存</button>
+                            <button class="save-btn"
+                                onclick="saveRow('{{ row['品號'] }}', '{{ row['機型'] }}', this)">儲存</button>
                             {% else %}
                             <button class="save-btn" disabled style="opacity: 0.3; cursor: not-allowed;">儲存</button>
                             {% endif %}
                         </td>
                         <td>
-                            <button class="history-btn"
-                                onclick="showHistory(&quot;{{ row['品號'] }}&quot;, &quot;{{ row['機型'] }}&quot;)">📋
+                            <button class="history-btn" onclick="showHistory('{{ row['品號'] }}', '{{ row['機型'] }}')">📋
                                 履歷</button>
                         </td>
                     </tr>
@@ -575,8 +575,8 @@
         }
 
 
-        function saveRow(itemId, btn) {
-            console.log('[SAVE] Starting save for:', itemId);
+        function saveRow(itemId, modelName, btn) {
+            console.log('[SAVE] Starting save for:', itemId, 'Model:', modelName);
             console.log('[SAVE] isLoggedIn:', isLoggedIn, 'isAdmin:', isAdmin);
 
             // 檢查權限
@@ -605,7 +605,7 @@
             fetch(`/api/inventory/update/${partName}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ item_id: itemId, updates: updates })
+                body: JSON.stringify({ item_id: itemId, model_name: modelName, updates: updates })
             })
                 .then(res => res.json())
                 .then(data => {
