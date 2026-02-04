@@ -8,6 +8,7 @@ let currentLang = 'zh'; // 預設語言
 // 工廠篩選全域變數
 let allOrders = [];  // 儲存所有工單資料
 let currentFactory = 'all';  // 當前選中的工廠
+let allShortageMap = {}; // 儲存缺料狀態 {OrderNo: [PartTypes]}
 
 // 翻譯字典
 const TRANSLATIONS = {
@@ -232,52 +233,81 @@ function updateStaticUI() {
  */
 async function loadDashboardData() {
     try {
-        const response = await fetch(`${API_BASE}/api/summary`);
-        const data = await response.json();
+        const hasOrdersTable = document.getElementById('ordersTableBody');
 
-        // 供需分析 - 兩頁都有
-        if (document.getElementById('supplyDemandCards')) {
-            renderSupplyDemand(data.supply_demand);
+        // 平行載入所有需要的資料，以加快速度
+        const promises = [
+            fetch(`${API_BASE}/api/summary`).then(r => r.json()),
+            fetch(`${API_BASE}/api/orders`).then(r => r.json())
+        ];
+
+        // 只有在工單頁面才載入缺料資料
+        if (hasOrdersTable) {
+            promises.push(fetch(`${API_BASE}/api/shortage`).then(r => r.json()));
+        } else {
+            promises.push(Promise.resolve(null));
         }
 
-        // 庫存總覽 - 只有首頁
-        if (document.getElementById('inventoryGrid')) {
-            renderInventory(data.inventory);
-        }
+        const [data, ordersData, shortageJson] = await Promise.all(promises);
 
-        // 庫存明細 - 只有首頁
-        if (document.getElementById('detailsTableBody')) {
-            const count = data.inventory_details ? data.inventory_details.length : 0;
-            const titleEl = document.getElementById('titleDetails');
-            if (titleEl) {
-                const baseTitle = t('TITLE_DETAILS');
-                titleEl.innerHTML = `${baseTitle} <span class="badge" style="background: var(--accent-blue); font-size: 0.8rem; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">${count}</span>`;
+        // 1. 處理庫存概要與供需 (api/summary)
+        if (data) {
+            // 供需分析 - 兩頁都有
+            if (document.getElementById('supplyDemandCards')) {
+                renderSupplyDemand(data.supply_demand);
             }
-            renderInventoryDetails(data.inventory_details);
+
+            // 庫存總覽 - 只有首頁
+            if (document.getElementById('inventoryGrid')) {
+                renderInventory(data.inventory);
+            }
+
+            // 庫存明細 - 只有首頁
+            if (document.getElementById('detailsTableBody')) {
+                const count = data.inventory_details ? data.inventory_details.length : 0;
+                const titleEl = document.getElementById('titleDetails');
+                if (titleEl) {
+                    const baseTitle = t('TITLE_DETAILS');
+                    titleEl.innerHTML = `${baseTitle} <span class="badge" style="background: var(--accent-blue); font-size: 0.8rem; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">${count}</span>`;
+                }
+                renderInventoryDetails(data.inventory_details);
+            }
+
+            // 更新時間戳
+            if (document.getElementById('lastUpdate')) {
+                document.getElementById('lastUpdate').textContent =
+                    `${t('LAST_UPDATE')}: ${data.timestamp}`;
+            }
         }
 
-        // 載入工單資料
-        const ordersResponse = await fetch(`${API_BASE}/api/orders`);
-        const ordersData = await ordersResponse.json();
-
-        // 工單統計 - 只有工單頁
-        if (document.getElementById('ordersStats')) {
-            renderOrdersStats(ordersData.stats);
+        // 2. 處理缺料資料 (api/shortage)
+        if (shortageJson && shortageJson.success) {
+            allShortageMap = {};
+            shortageJson.data.forEach(item => {
+                if (item.缺料數量 > 0) {
+                    if (!allShortageMap[item.工單號碼]) {
+                        allShortageMap[item.工單號碼] = [];
+                    }
+                    allShortageMap[item.工單號碼].push(item.零件類型);
+                }
+            });
         }
 
-        // 工單表格 - 只有工單頁
-        if (document.getElementById('ordersTableBody')) {
-            allOrders = ordersData.orders || [];  // 儲存所有工單
-            updateFactoryCounts();  // 更新工廠計數器
-            const filteredOrders = filterOrdersByFactory(currentFactory);
-            renderOrdersTable(filteredOrders);
-            updateOrderStats(filteredOrders);  // 更新統計（使用篩選後的資料）
-        }
+        // 3. 處理工單資料 (api/orders)
+        if (ordersData) {
+            // 工單統計 - 只有工單頁
+            if (document.getElementById('ordersStats')) {
+                renderOrdersStats(ordersData.stats);
+            }
 
-        // 更新時間戳
-        if (document.getElementById('lastUpdate')) {
-            document.getElementById('lastUpdate').textContent =
-                `${t('LAST_UPDATE')}: ${data.timestamp}`;
+            // 工單表格 - 只有工單頁
+            if (hasOrdersTable) {
+                allOrders = ordersData.orders || [];  // 儲存所有工單
+                updateFactoryCounts();  // 更新工廠計數器
+                const filteredOrders = filterOrdersByFactory(currentFactory);
+                renderOrdersTable(filteredOrders);
+                updateOrderStats(filteredOrders);  // 更新統計（使用篩選後的資料）
+            }
         }
 
     } catch (error) {
@@ -426,6 +456,9 @@ function renderSupplyDemand(data) {
         const diffClass = item.差異 >= 0 ? 'positive' : 'negative';
         const diffSign = item.差異 >= 0 ? '+' : '';
 
+        // 如果缺料 (差異 < 0)，強制顯示 -1
+        const diffDisplay = item.差異 < 0 ? '-1' : `${diffSign}${item.差異}`;
+
         return `
             <div class="supply-card ${statusClass}">
                 <div class="card-header">
@@ -443,7 +476,7 @@ function renderSupplyDemand(data) {
                     </div>
                     <div class="stat-item">
                         <div class="stat-label">${t('DIFF')}</div>
-                        <div class="stat-value diff ${diffClass}">${diffSign}${item.差異}</div>
+                        <div class="stat-value diff ${diffClass}">${diffDisplay}</div>
                     </div>
                 </div>
             </div>
@@ -470,6 +503,82 @@ function renderInventory(data) {
             <div class="inventory-count">${count}</div>
         </div>
     `).join('');
+}
+
+/**
+ * 顯示入庫對話框
+ */
+function showStockInDialog(partName) {
+    const quantity = prompt(`請輸入 ${partName} 的入庫數量：`);
+    if (quantity === null) return;
+
+    const qty = parseInt(quantity);
+    if (isNaN(qty) || qty <= 0) {
+        alert('請輸入有效的數量！');
+        return;
+    }
+
+    // 調用入庫 API
+    fetch(`${API_BASE}/api/stock/in`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            part_name: partName,
+            quantity: qty
+        })
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(`✅ ${partName} 入庫成功！已增加 ${qty} 件到素材`);
+                loadData(); // 重新載入數據
+            } else {
+                alert(`❌ 入庫失敗：${data.error || '未知錯誤'}`);
+            }
+        })
+        .catch(err => {
+            alert(`❌ 入庫失敗：${err.message}`);
+        });
+}
+
+/**
+ * 顯示出庫對話框
+ */
+function showStockOutDialog(partName) {
+    const workOrder = prompt(`請輸入工單號碼：`);
+    if (workOrder === null || !workOrder.trim()) return;
+
+    const quantity = prompt(`請輸入 ${partName} 的出庫數量：`);
+    if (quantity === null) return;
+
+    const qty = parseInt(quantity);
+    if (isNaN(qty) || qty <= 0) {
+        alert('請輸入有效的數量！');
+        return;
+    }
+
+    // 調用出庫 API
+    fetch(`${API_BASE}/api/stock/out`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            part_name: partName,
+            work_order: workOrder.trim(),
+            quantity: qty
+        })
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(`✅ ${partName} 出庫成功！工單 ${workOrder}，已扣除 ${qty} 件成品`);
+                loadData(); // 重新載入數據
+            } else {
+                alert(`❌ 出庫失敗：${data.error || '未知錯誤'}`);
+            }
+        })
+        .catch(err => {
+            alert(`❌ 出庫失敗：${err.message}`);
+        });
 }
 
 /**
@@ -529,6 +638,15 @@ function renderOrdersTable(orders) {
         const statusClass = isComplete ? 'complete' : 'active';
         const statusText = isComplete ? t('ORDER_STATUS_COMPLETE') : t('ORDER_STATUS_ACTIVE');
 
+        // 檢查缺料狀態 helper
+        const getDisplayValue = (partName, demandValue) => {
+            const shortageParts = allShortageMap[order.工單] || [];
+            if (shortageParts.includes(partName)) {
+                return '<span style="color: #ff4444; font-weight: bold;">-1</span>';
+            }
+            return (demandValue !== undefined && demandValue !== null) ? demandValue : '-';
+        };
+
         return `
             <tr>
                 <td>${order.工單 || ''}</td>
@@ -537,11 +655,11 @@ function renderOrdersTable(orders) {
                 <td title="${order.客戶 || ''}">${truncateText(order.客戶, 15)}</td>
                 <td>${order.生產開始 || '-'}</td>
                 <td>${order.生產結束 || '-'}</td>
-                <td>${order.需求日期 || '-'}</td>
-                <td>${(order.需求_工作台 !== undefined && order.需求_工作台 !== null) ? order.需求_工作台 : '-'}</td>
-                <td>${(order.需求_底座 !== undefined && order.需求_底座 !== null) ? order.需求_底座 : '-'}</td>
-                <td>${(order.需求_橫樑 !== undefined && order.需求_橫樑 !== null) ? order.需求_橫樑 : '-'}</td>
-                <td>${(order.需求_立柱 !== undefined && order.需求_立柱 !== null) ? order.需求_立柱 : '-'}</td>
+                <td>${order.工廠 === 'main' ? '本廠' : (order.工廠 === 'factory3' ? '三廠' : order.工廠)}</td>
+                <td>${getDisplayValue('工作台', order.需求_工作台)}</td>
+                <td>${getDisplayValue('底座', order.需求_底座)}</td>
+                <td>${getDisplayValue('橫樑', order.需求_橫樑)}</td>
+                <td>${getDisplayValue('立柱', order.需求_立柱)}</td>
                 <td><span class="status-tag ${statusClass}">${statusText}</span></td>
             </tr>
         `;

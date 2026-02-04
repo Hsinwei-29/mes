@@ -378,6 +378,48 @@
             padding: 2rem;
             color: var(--text-muted);
         }
+
+        /* 出入庫按鈕樣式 */
+        .btn-stock-in,
+        .btn-stock-out {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .btn-stock-in {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .btn-stock-in:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-stock-out {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+
+        .btn-stock-out:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-stock-in:active,
+        .btn-stock-out:active {
+            transform: translateY(0);
+        }
     </style>
 </head>
 
@@ -419,6 +461,14 @@
         <div class="subheader">
             <a href="{{ url_for('main.index') }}" class="back-btn">← 返回</a>
             <h2 class="page-title">{{ part_icon }} {{ part_name }} 詳細製程追蹤</h2>
+            <div style="margin-left: auto; display: flex; gap: 1rem;">
+                <button class="btn-stock-in" onclick="showStockInDialog('{{ part_name }}')">
+                    ➕ 入庫
+                </button>
+                <button class="btn-stock-out" onclick="showStockOutDialog('{{ part_name }}')">
+                    ➖ 出庫
+                </button>
+            </div>
         </div>
 
         <!-- 編輯區域 -->
@@ -499,6 +549,98 @@
                     <div id="historyTimeline" class="timeline">
                         <!-- 動態載入時間軸 -->
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 入庫模態視窗 -->
+        <div id="stockInModal" class="history-modal">
+            <div class="history-modal-content">
+                <div class="history-modal-header">
+                    <h2>➕ 素材入庫</h2>
+                    <button class="history-modal-close" onclick="closeStockInModal()">&times;</button>
+                </div>
+                <div class="history-modal-body" style="padding: 2rem;">
+                    <form id="stockInForm" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">機型：</label>
+                            <select id="stockInModel" required
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;">
+                                <option value="">請選擇機型</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">鑄造商：</label>
+                            <select id="stockInSupplier" required
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;">
+                                <option value="">請選擇鑄造商</option>
+                                <option value="永棧(LD)">永棧(LD)</option>
+                                <option value="源潤豐(YJF)">源潤豐(YJF)</option>
+                                <option value="新鎰(SY)">新鎰(SY)</option>
+                                <option value="正鋒(CFC)">正鋒(CFC)</option>
+                                <option value="揚鋼(YK)">揚鋼(YK)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">數量：</label>
+                            <input type="number" id="stockInQuantity" min="1" required
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
+                                placeholder="請輸入入庫數量">
+                        </div>
+                        <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem;">
+                            <button type="button" onclick="closeStockInModal()"
+                                style="padding: 0.75rem 1.5rem; border: 1px solid var(--border-color); background: white; border-radius: var(--radius-sm); cursor: pointer;">
+                                取消
+                            </button>
+                            <button type="submit" class="btn-stock-in"
+                                style="padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius-sm); cursor: pointer;">
+                                確認入庫
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 出庫模態視窗 -->
+        <div id="stockOutModal" class="history-modal">
+            <div class="history-modal-content">
+                <div class="history-modal-header">
+                    <h2>➖ 成品出庫</h2>
+                    <button class="history-modal-close" onclick="closeStockOutModal()">&times;</button>
+                </div>
+                <div class="history-modal-body" style="padding: 2rem;">
+                    <form id="stockOutForm" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">機型：</label>
+                            <select id="stockOutModel" required
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;">
+                                <option value="">請選擇機型</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">工單號碼：</label>
+                            <input type="text" id="stockOutWorkOrder" required
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
+                                placeholder="請輸入工單號碼">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">數量：</label>
+                            <input type="number" id="stockOutQuantity" min="1" required
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
+                                placeholder="請輸入出庫數量">
+                        </div>
+                        <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem;">
+                            <button type="button" onclick="closeStockOutModal()"
+                                style="padding: 0.75rem 1.5rem; border: 1px solid var(--border-color); background: white; border-radius: var(--radius-sm); cursor: pointer;">
+                                取消
+                            </button>
+                            <button type="submit" class="btn-stock-out"
+                                style="padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius-sm); cursor: pointer;">
+                                確認出庫
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -733,6 +875,181 @@
         document.getElementById('historyModal').addEventListener('click', function (e) {
             if (e.target === this) {
                 closeHistoryModal();
+            }
+        });
+
+        // 出入庫功能
+        function showStockInDialog(partName) {
+            // 打開模態視窗
+            const modal = document.getElementById('stockInModal');
+            modal.classList.add('active');
+
+            // 載入該零件的所有機型
+            const modelSelect = document.getElementById('stockInModel');
+            modelSelect.innerHTML = '<option value="">載入中...</option>';
+
+            // 從表格中提取品號和機型列表
+            const table = document.querySelector('.edit-table');
+            const models = [];
+            if (table) {
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    const partNoCell = row.cells[0];  // 品號
+                    const modelCell = row.cells[1];   // 機型
+                    if (partNoCell && modelCell) {
+                        const partNo = partNoCell.textContent.trim();
+                        const modelName = modelCell.textContent.trim();
+                        if (partNo && modelName) {
+                            models.push({
+                                partNo: partNo,
+                                modelName: modelName,
+                                display: `${partNo} - ${modelName}`
+                            });
+                        }
+                    }
+                });
+            }
+
+            // 填充機型選項（品號 - 機型名稱）
+            modelSelect.innerHTML = '<option value="">請選擇機型</option>' +
+                models.map(m => `<option value="${m.partNo}">${m.display}</option>`).join('');
+        }
+
+        function closeStockInModal() {
+            const modal = document.getElementById('stockInModal');
+            modal.classList.remove('active');
+            document.getElementById('stockInForm').reset();
+        }
+
+        // 處理入庫表單提交
+        document.getElementById('stockInForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const model = document.getElementById('stockInModel').value;
+            const supplier = document.getElementById('stockInSupplier').value;
+            const quantity = parseInt(document.getElementById('stockInQuantity').value);
+
+            if (!model || !supplier || !quantity) {
+                alert('請填寫所有欄位！');
+                return;
+            }
+
+            fetch('/api/stock/in', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    part_name: partName,
+                    model: model,
+                    supplier: supplier,
+                    quantity: quantity
+                })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`✅ ${model} 入庫成功！\n鑄造商：${supplier}\n數量：${quantity} 件`);
+                        closeStockInModal();
+                        location.reload();
+                    } else {
+                        alert(`❌ 入庫失敗：${data.error || '未知錯誤'}`);
+                    }
+                })
+                .catch(err => {
+                    alert(`❌ 入庫失敗：${err.message}`);
+                });
+        });
+
+        // 點擊背景關閉入庫視窗
+        document.getElementById('stockInModal').addEventListener('click', function (e) {
+            if (e.target === this) {
+                closeStockInModal();
+            }
+        });
+
+        function showStockOutDialog(partName) {
+            // 打開模態視窗
+            const modal = document.getElementById('stockOutModal');
+            modal.classList.add('active');
+
+            // 載入該零件的所有機型
+            const modelSelect = document.getElementById('stockOutModel');
+            modelSelect.innerHTML = '<option value="">載入中...</option>';
+
+            // 從表格中提取品號和機型列表
+            const table = document.querySelector('.edit-table');
+            const models = [];
+            if (table) {
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    const partNoCell = row.cells[0];  // 品號
+                    const modelCell = row.cells[1];   // 機型
+                    if (partNoCell && modelCell) {
+                        const partNo = partNoCell.textContent.trim();
+                        const modelName = modelCell.textContent.trim();
+                        if (partNo && modelName) {
+                            models.push({
+                                partNo: partNo,
+                                modelName: modelName,
+                                display: `${partNo} - ${modelName}`
+                            });
+                        }
+                    }
+                });
+            }
+
+            // 填充機型選項
+            modelSelect.innerHTML = '<option value="">請選擇機型</option>' +
+                models.map(m => `<option value="${m.partNo}">${m.display}</option>`).join('');
+        }
+
+        function closeStockOutModal() {
+            const modal = document.getElementById('stockOutModal');
+            modal.classList.remove('active');
+            document.getElementById('stockOutForm').reset();
+        }
+
+        // 處理出庫表單提交
+        document.getElementById('stockOutForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const model = document.getElementById('stockOutModel').value;
+            const workOrder = document.getElementById('stockOutWorkOrder').value;
+            const quantity = parseInt(document.getElementById('stockOutQuantity').value);
+
+            if (!model || !workOrder || !quantity) {
+                alert('請填寫所有欄位！');
+                return;
+            }
+
+            fetch('/api/stock/out', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    part_name: partName,
+                    model: model,
+                    work_order: workOrder.trim(),
+                    quantity: quantity
+                })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`✅ ${model} 出庫成功！\n工單：${workOrder}\n已扣除 ${quantity} 件成品`);
+                        closeStockOutModal();
+                        location.reload();
+                    } else {
+                        alert(`❌ 出庫失敗：${data.error || '未知錯誤'}`);
+                    }
+                })
+                .catch(err => {
+                    alert(`❌ 出庫失敗：${err.message}`);
+                });
+        });
+
+        // 點擊背景關閉出庫視窗
+        document.getElementById('stockOutModal').addEventListener('click', function (e) {
+            if (e.target === this) {
+                closeStockOutModal();
             }
         });
     </script>
