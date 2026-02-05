@@ -1,10 +1,14 @@
 import pandas as pd
 from flask import current_app
 from datetime import datetime
+import os
 
 # 全域快取
 PICKING_CACHE = None
 PICKING_LAST_UPDATE = None
+
+# 工單快取
+ORDERS_CACHE = {'mtime': 0, 'data': None}
 
 def clean_id(val):
     if pd.isna(val): return ""
@@ -71,9 +75,20 @@ def get_picking_data():
 
 def load_orders():
     """載入工單總表資料並整合撥料需求 (整合多分頁並解決亂碼)"""
+    global ORDERS_CACHE
     try:
-        picking_data = get_picking_data()
         workorder_file = current_app.config['WORKORDER_FILE']
+        
+        # 檢查檔案最後修改時間
+        try:
+            mtime = os.path.getmtime(workorder_file)
+            if ORDERS_CACHE['data'] and ORDERS_CACHE['mtime'] == mtime:
+                # 若檔案未變更，直接回傳快取
+                return ORDERS_CACHE['data']
+        except:
+            mtime = 0
+
+        picking_data = get_picking_data()
         
         xl = pd.ExcelFile(workorder_file)
         all_parsed_orders = []
@@ -195,8 +210,8 @@ def load_orders():
                     })
                 except: continue
 
-        # 排序：按工單號碼降序排列（新工單在前）
-        all_parsed_orders.sort(key=lambda o: o['工單'], reverse=True)
+        # 排序：按工單號碼升序排列（舊工單在前，數字小在前）
+        all_parsed_orders.sort(key=lambda o: o['工單'], reverse=False)
         
         # 計算統計資料
         today_str = datetime.now().strftime('%Y-%m-%d')
@@ -210,11 +225,17 @@ def load_orders():
 
         in_progress = sum(1 for o in all_parsed_orders if o['生產結束'] and o['生產結束'] >= today_str)
         
-        return {
+        result = {
             'orders': all_parsed_orders,
             'stats': {'total': len(all_parsed_orders), 'completed': len(all_parsed_orders) - in_progress, 'in_progress': in_progress},
             'demand': total_demand
         }
+        
+        # 更新快取
+        ORDERS_CACHE['mtime'] = mtime
+        ORDERS_CACHE['data'] = result
+        
+        return result
     except Exception as e:
         print(f"Error loading all orders: {e}")
         return {'orders': [], 'stats': {}, 'demand': {}}

@@ -68,7 +68,24 @@ def load_casting_inventory():
         
         # 從各個鑄件工作表計算總數
         inventory = {}
+        semi_finished = {}  # 半品總數
+        finished = {}  # 成品總數
         all_models = {}  # 儲存所有機型的數據
+
+        # 定義半品和成品的欄位映射
+        semi_finished_fields = {
+            '底座': ['素材', 'M4', 'M3'],
+            '工作台': ['素材', 'W1', 'W2', 'W3', 'W4'],
+            '橫樑': ['素材', 'M6', 'M5'],
+            '立柱': ['素材', '半品', '成品銑工']
+        }
+        
+        finished_fields = {
+            '底座': ['成品研磨'],
+            '工作台': ['成品'],
+            '橫樑': ['成品研磨'],
+            '立柱': ['成品研磨']
+        }
 
         # 1. 建立完整機型清單（從所有零件分頁收集）
         master_models = _get_master_model_list()
@@ -83,8 +100,13 @@ def load_casting_inventory():
                 config = CONFIGS.get(part_name, [])
                 process_col_indices = [idx for label, idx in config if label != '總數']
                 
+                # 建立欄位名稱到索引的映射
+                field_to_idx = {label: idx for label, idx in config}
+                
                 # 初始化該料件的總數
                 part_total = 0
+                part_semi = 0
+                part_finished = 0
 
                 # 提取機型詳細資料並累加總數
                 if '機型' in df.columns:
@@ -100,27 +122,61 @@ def load_casting_inventory():
                             
                             # 加總所有製程欄位的數量
                             row_total = 0
+                            row_semi = 0
+                            row_finished = 0
+                            
                             for col_idx in process_col_indices:
                                 if col_idx < len(row):
                                     val = row.iloc[col_idx]
                                     if pd.notna(val):
                                         try:
-                                            row_total += int(float(val))
+                                            qty = int(float(val))
+                                            row_total += qty
                                         except:
                                             pass
+                            
+                            # 計算半品數量
+                            for field_name in semi_finished_fields.get(part_name, []):
+                                if field_name in field_to_idx:
+                                    col_idx = field_to_idx[field_name]
+                                    if col_idx < len(row):
+                                        val = row.iloc[col_idx]
+                                        if pd.notna(val):
+                                            try:
+                                                row_semi += int(float(val))
+                                            except:
+                                                pass
+                            
+                            # 計算成品數量
+                            for field_name in finished_fields.get(part_name, []):
+                                if field_name in field_to_idx:
+                                    col_idx = field_to_idx[field_name]
+                                    if col_idx < len(row):
+                                        val = row.iloc[col_idx]
+                                        if pd.notna(val):
+                                            try:
+                                                row_finished += int(float(val))
+                                            except:
+                                                pass
                             
                             # 累加到總表 (使用 += 處理重複出現的機型)
                             all_models[model_str][part_name] += row_total
                             
                             # 累加到該料件總數
                             part_total += row_total
+                            part_semi += row_semi
+                            part_finished += row_finished
                 
                 # 設定該料件的總庫存
                 inventory[part_name] = part_total
+                semi_finished[part_name] = part_semi
+                finished[part_name] = part_finished
                 
             except Exception as e:
                 print(f"Error loading {part_name}: {e}")
                 inventory[part_name] = 0
+                semi_finished[part_name] = 0
+                finished[part_name] = 0
         
         # 確保順序：工作台、底座、橫樑、立柱
         inventory = {
@@ -130,14 +186,33 @@ def load_casting_inventory():
             '立柱': inventory.get('立柱', 0)
         }
         
+        semi_finished = {
+            '工作台': semi_finished.get('工作台', 0),
+            '底座': semi_finished.get('底座', 0),
+            '橫樑': semi_finished.get('橫樑', 0),
+            '立柱': semi_finished.get('立柱', 0)
+        }
+        
+        finished = {
+            '工作台': finished.get('工作台', 0),
+            '底座': finished.get('底座', 0),
+            '橫樑': finished.get('橫樑', 0),
+            '立柱': finished.get('立柱', 0)
+        }
         
         # 轉換機型數據為列表 (包含零庫存機型)
         details = list(all_models.values())
         
-        return {'summary': inventory, 'details': details, 'all_models': all_models}
+        return {
+            'summary': inventory, 
+            'semi_finished': semi_finished,
+            'finished': finished,
+            'details': details, 
+            'all_models': all_models
+        }
     except Exception as e:
         print(f"Error loading casting inventory: {e}")
-        return {'summary': {}, 'details': [], 'all_models': {}, 'error': str(e)}
+        return {'summary': {}, 'semi_finished': {}, 'finished': {}, 'details': [], 'all_models': {}, 'error': str(e)}
 
 def get_zero_inventory_models():
     """獲取總數為0的機型列表（庫存警示）"""
@@ -319,7 +394,7 @@ def update_cell(part_type, item_id, field, new_value, user_id, model_name=None):
         traceback.print_exc()
         return {'success': False, 'error': str(e)}
 
-def log_edit(part_type, item_id, field, old_value, new_value, user_id):
+def log_edit(part_type, item_id, field, old_value, new_value, user_id, note=None):
     """記錄編輯歷程"""
     try:
         log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
@@ -331,7 +406,7 @@ def log_edit(part_type, item_id, field, old_value, new_value, user_id):
             with open(log_file, 'r', encoding='utf-8') as f:
                 history = json.load(f)
         
-        history.insert(0, {
+        entry = {
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'user': user_id,
             'part': part_type,
@@ -339,7 +414,12 @@ def log_edit(part_type, item_id, field, old_value, new_value, user_id):
             'field': field,
             'old_value': old_value,
             'new_value': new_value
-        })
+        }
+        
+        if note:
+            entry['note'] = note
+            
+        history.insert(0, entry)
         
         # 只保留最近 500 筆
         history = history[:500]
@@ -435,7 +515,7 @@ def get_history_stats(part_type):
 
 
 
-def stock_in_material(part_name, quantity, model=None, supplier=None):
+def stock_in_material(part_name, quantity, model=None, supplier=None, user=None, work_order_code=None):
     """
     入庫操作 - 增加素材數量
     """
@@ -530,16 +610,20 @@ def stock_in_material(part_name, quantity, model=None, supplier=None):
         
         # 寫入履歷
         if log_data:
-            user_id = session.get('user', 'System')
+            user_id = user if user else session.get('user', 'System')
             field_name = '素材'
             if supplier:
                 field_name += f' (入庫: {supplier})'
             else:
                 field_name += ' (入庫)'
                 
+            note = None
+            if work_order_code:
+                note = f"工單編碼: {work_order_code}"
+                
             try:
                 log_edit(part_name, log_data['item_id'], field_name, 
-                         log_data['old_value'], log_data['new_value'], user_id)
+                         log_data['old_value'], log_data['new_value'], user_id, note)
             except Exception as e:
                 print(f"Failed to log edit: {e}")
 

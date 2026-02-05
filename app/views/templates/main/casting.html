@@ -582,6 +582,12 @@
                             </select>
                         </div>
                         <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">工單編碼：</label>
+                            <input type="text" id="stockInWorkOrderCode"
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
+                                placeholder="請輸入工單編碼 (選填)">
+                        </div>
+                        <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">數量：</label>
                             <input type="number" id="stockInQuantity" min="1" required
                                 style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
@@ -856,6 +862,7 @@
                         <div class="timeline-time">${h.timestamp}</div>
                         <div class="timeline-content">
                             <div class="timeline-field">${h.field}</div>
+                            ${h.note ? `<div class="timeline-note" style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem;">📝 ${h.note}</div>` : ''}
                             <div class="timeline-change">
                                 <span class="timeline-old">${oldVal}</span>
                                 <span>${arrow}</span>
@@ -928,6 +935,7 @@
             const model = document.getElementById('stockInModel').value;
             const supplier = document.getElementById('stockInSupplier').value;
             const quantity = parseInt(document.getElementById('stockInQuantity').value);
+            const workOrderCode = document.getElementById('stockInWorkOrderCode').value.trim();
 
             if (!model || !supplier || !quantity) {
                 alert('請填寫所有欄位！');
@@ -941,7 +949,8 @@
                     part_name: partName,
                     model: model,
                     supplier: supplier,
-                    quantity: quantity
+                    quantity: quantity,
+                    work_order_code: workOrderCode
                 })
             })
                 .then(r => r.json())

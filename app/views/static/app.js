@@ -460,23 +460,28 @@ function renderSupplyDemand(data) {
         const diffDisplay = item.差異 < 0 ? '-1' : `${diffSign}${item.差異}`;
 
         return `
-            <div class="supply-card ${statusClass}">
+            <div class="supply-card ${statusClass}" onclick="window.location.href='/part/${encodeURIComponent(item.鑄件)}'" style="cursor: pointer;">
                 <div class="card-header">
                     <span class="card-title">${PART_ICONS[item.鑄件] || '📦'} ${tDynamic(item.鑄件)}</span>
                     <span class="card-badge ${statusClass}">${badgeText}</span>
                 </div>
                 <div class="card-stats">
                     <div class="stat-item">
-                        <div class="stat-label">${t('STOCK')}</div>
-                        <div class="stat-value stock">${item.庫存}</div>
+                        <div class="stat-label">半品</div>
+                        <div class="stat-value stock">${item.半品}</div>
                     </div>
                     <div class="stat-item">
+                        <div class="stat-label">成品</div>
+                        <div class="stat-value stock">${item.成品}</div>
+                    </div>
+                    <div class="stat-item" 
+                         style="cursor: pointer; transition: all 0.2s ease;" 
+                         onclick="window.location.href='/shortage?part=${encodeURIComponent(item.鑄件)}'" 
+                         onmouseover="this.style.transform='scale(1.05)'; this.style.background='#f0f9ff';" 
+                         onmouseout="this.style.transform='scale(1)'; this.style.background='transparent';"
+                         title="點擊查看缺料分析">
                         <div class="stat-label">${t('DEMAND')}</div>
                         <div class="stat-value demand">${item.需求}</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">${t('DIFF')}</div>
-                        <div class="stat-value diff ${diffClass}">${diffDisplay}</div>
                     </div>
                 </div>
             </div>
@@ -788,4 +793,92 @@ window.onclick = function (event) {
     if (event.target == modal) {
         closeModal();
     }
+    const supplyModal = document.getElementById('supplyDetailModal');
+    if (event.target == supplyModal) {
+        closeSupplyDetailModal();
+    }
+}
+
+/**
+ * 顯示供需詳細資訊模態視窗
+ */
+async function showSupplyDetailModal(partName) {
+    const modal = document.getElementById('supplyDetailModal');
+    const modalBody = document.getElementById('supplyModalBody');
+    const modalTitle = document.getElementById('supplyModalTitle');
+
+    if (!modal || !modalBody || !modalTitle) return;
+
+    // 設定標題
+    modalTitle.textContent = `${PART_ICONS[partName] || '📦'} ${partName} - 半品成品明細`;
+
+    // 顯示載入中
+    modalBody.innerHTML = '<div class="loading">載入中...</div>';
+    modal.style.display = 'flex';
+
+    try {
+        // 呼叫 API 取得詳細資料
+        const response = await fetch(`${API_BASE}/api/part/${encodeURIComponent(partName)}`);
+        const data = await response.json();
+
+        if (!data || !data.items || data.items.length === 0) {
+            modalBody.innerHTML = '<div class="loading">無資料</div>';
+            return;
+        }
+
+        // 根據 CONFIGS 取得該零件的欄位定義
+        const configs = {
+            '底座': ['素材', 'M4', 'M3', '成品研磨'],
+            '工作台': ['素材', 'W1', 'W2', 'W3', 'W4', '成品'],
+            '橫樑': ['素材', 'M6', 'M5', '成品研磨'],
+            '立柱': ['素材', '半品', '成品銑工', '成品研磨']
+        };
+
+        const fields = configs[partName] || [];
+
+        // 建立表格
+        let html = `
+            <div class="details-table-wrapper">
+                <table class="details-table">
+                    <thead>
+                        <tr>
+                            <th>機型</th>
+                            ${fields.map(f => `<th>${f}</th>`).join('')}
+                            <th>總數</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        data.items.forEach(item => {
+            html += '<tr>';
+            html += `<td><strong>${item.機型 || ''}</strong></td>`;
+            fields.forEach(field => {
+                const value = item[field] || 0;
+                html += `<td>${value}</td>`;
+            });
+            html += `<td><strong>${item.總數 || 0}</strong></td>`;
+            html += '</tr>';
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        modalBody.innerHTML = html;
+
+    } catch (error) {
+        console.error('Error loading supply detail:', error);
+        modalBody.innerHTML = '<div class="loading">載入失敗</div>';
+    }
+}
+
+/**
+ * 關閉供需詳細資訊模態視窗
+ */
+function closeSupplyDetailModal() {
+    const modal = document.getElementById('supplyDetailModal');
+    if (modal) modal.style.display = 'none';
 }

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ part_icon }} {{ part_name }} - 半品成品明細</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        .part-detail-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .part-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .part-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .part-header .subtitle {
+            margin-top: 0.5rem;
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+
+        .back-button {
+            display: inline-block;
+            margin-bottom: 1rem;
+            padding: 0.5rem 1rem;
+            background: white;
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+        }
+
+        .details-table-wrapper {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .details-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .details-table th {
+            padding: 1rem;
+            text-align: center;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .details-table tbody tr {
+            border-bottom: 1px solid #e0e0e0;
+            transition: background 0.2s ease;
+        }
+
+        .details-table tbody tr:hover {
+            background: #f5f5f5;
+        }
+
+        .details-table td {
+            padding: 0.75rem 1rem;
+            text-align: center;
+        }
+
+        .details-table td:first-child {
+            font-weight: 600;
+            text-align: left;
+            color: #667eea;
+        }
+
+        .details-table td:last-child {
+            font-weight: 700;
+            color: #764ba2;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .summary-card .label {
+            font-size: 0.875rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="part-detail-container">
+        <a href="{{ url_for('main.index') }}" class="back-button">← 返回首頁</a>
+
+        <div class="part-header">
+            <h1>{{ part_icon }} {{ part_name }} - 半品成品明細</h1>
+            <div class="subtitle">更新時間：{{ timestamp }}</div>
+        </div>
+
+        {% if data and data.rows %}
+        <!-- 摘要卡片 -->
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="label">總機型數</div>
+                <div class="value">{{ data.rows|length }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">半品數</div>
+                <div class="value" style="color: #f59e0b;">{{ total_semi }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">成品數</div>
+                <div class="value" style="color: #10b981;">{{ total_finished }}</div>
+            </div>
+            <div class="summary-card" style="cursor: pointer; transition: all 0.2s ease;"
+                onclick="window.location.href='/shortage?part={{ part_name }}'"
+                onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 16px rgba(139, 92, 246, 0.3)';"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)';"
+                title="點擊查看缺料分析">
+                <div class="label">需求量</div>
+                <div class="value" style="color: #8b5cf6;">{{ total_demand }}</div>
+            </div>
+        </div>
+
+        <!-- 搜尋框 -->
+        <div class="search-box"
+            style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); margin-bottom: 2rem;">
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <input type="text" id="searchInput" placeholder="🔍 搜尋機型..."
+                    style="flex: 1; padding: 0.75rem 1rem; font-size: 1rem; border: 2px solid #e0e0e0; border-radius: 8px; transition: border-color 0.3s ease;"
+                    onkeyup="filterTable()" onfocus="this.style.borderColor='#667eea'"
+                    onblur="this.style.borderColor='#e0e0e0'">
+                <button onclick="clearSearch()"
+                    style="padding: 0.75rem 1.5rem; background: #f0f0f0; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s ease;"
+                    onmouseover="this.style.background='#e0e0e0'" onmouseout="this.style.background='#f0f0f0'">
+                    清除
+                </button>
+            </div>
+            <div id="searchStats" style="margin-top: 0.75rem; color: #666; font-size: 0.875rem;"></div>
+        </div>
+
+        <!-- 詳細表格 -->
+        <div class="details-table-wrapper">
+            <table class="details-table">
+                <thead>
+                    <tr>
+                        <th>機型</th>
+                        {% for header in data.headers %}
+                        {% if header not in ['機型', '品號'] %}
+                        <th>{{ header }}</th>
+                        {% endif %}
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data.rows %}
+                    <tr>
+                        <td>{{ row.機型 }}</td>
+                        {% for header in data.headers %}
+                        {% if header not in ['機型', '品號'] %}
+                        <td>{{ row[header] if row[header] is not none else 0 }}</td>
+                        {% endif %}
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="details-table-wrapper">
+            <div style="padding: 2rem; text-align: center; color: #999;">
+                無資料
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function filterTable() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toUpperCase();
+            const table = document.querySelector('.details-table');
+            const tbody = table.querySelector('tbody');
+            const rows = tbody.getElementsByTagName('tr');
+
+            let visibleCount = 0;
+            let totalCount = rows.length;
+
+            for (let i = 0; i < rows.length; i++) {
+                const firstCell = rows[i].getElementsByTagName('td')[0];
+                if (firstCell) {
+                    const txtValue = firstCell.textContent || firstCell.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        rows[i].style.display = '';
+                        visibleCount++;
+                    } else {
+                        rows[i].style.display = 'none';
+                    }
+                }
+            }
+
+            // 更新統計資訊
+            const stats = document.getElementById('searchStats');
+            if (filter) {
+                stats.textContent = `顯示 ${visibleCount} / ${totalCount} 筆資料`;
+            } else {
+                stats.textContent = '';
+            }
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            filterTable();
+            document.getElementById('searchInput').focus();
+        }
+    </script>
+</body>
+
+</html>

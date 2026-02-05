@@ -6,6 +6,13 @@
 import pandas as pd
 from flask import current_app
 from datetime import datetime
+import os
+
+# 缺料分析結果快取
+SHORTAGE_CACHE = {
+    'mtimes': (0, 0, 0),  # (casting_mtime, workorder_mtime, picking_mtime)
+    'data': None
+}
 
 def is_casting_part(part_description):
     """判斷物料說明是否為鑄件零件
@@ -80,10 +87,24 @@ def get_workorder_picking_mapping(casting_inventory=None):
             wo_number = str(row['工單號碼']).strip() if pd.notna(row['工單號碼']) else None
             
             if wo_number and wo_number not in ['nan', 'N/A', '']:
+                # 提取特規備註（如果欄位存在）
+                special_note = ''
+                if '特規備註' in row.index and pd.notna(row['特規備註']):
+                    special_note = str(row['特規備註']).strip()
+                
+                # 提取工單編碼（如果欄位存在，否則使用物料品號）
+                work_order_code = ''
+                if '工單編碼' in row.index and pd.notna(row['工單編碼']):
+                    work_order_code = str(row['工單編碼']).strip()
+                elif '物料品號' in row.index and pd.notna(row['物料品號']):
+                    work_order_code = str(row['物料品號']).strip()
+                
                 workorder_map[wo_number] = {
                     '客戶名稱': str(row['下單客戶名稱']).strip() if pd.notna(row['下單客戶名稱']) else '',
                     '生產開始': row['生產開始'] if pd.notna(row['生產開始']) else None,
                     '生產結束': row['生產結束'] if pd.notna(row['生產結束']) else None,
+                    '工單編碼': work_order_code,
+                    '特規備註': special_note,
                     '零件需求': {}
                 }
         
@@ -208,6 +229,28 @@ def calculate_shortage():
         }]
     """
     try:
+        # 0. 檢查快取
+        casting_file = current_app.config['CASTING_FILE']
+        workorder_file = current_app.config['WORKORDER_FILE']
+        picking_file = current_app.config['PICKING_FILE']
+        
+        current_mtimes = (0, 0, 0)
+        try:
+            current_mtimes = (
+                os.path.getmtime(casting_file),
+                os.path.getmtime(workorder_file),
+                os.path.getmtime(picking_file)
+            )
+            
+            # 如果快取存在且檔案未修改，直接回傳
+            global SHORTAGE_CACHE
+            if (SHORTAGE_CACHE['data'] is not None and 
+                SHORTAGE_CACHE['mtimes'] == current_mtimes):
+                print("Returning cached shortage data")
+                return SHORTAGE_CACHE['data']
+        except Exception as e:
+            print(f"Error checking mtimes: {e}")
+
         # 1. 先獲取鑄件庫存（作為品號過濾依據）
         casting_inventory = get_casting_inventory()
         
@@ -224,6 +267,8 @@ def calculate_shortage():
             customer = wo_data['客戶名稱']
             start_date = wo_data['生產開始']
             end_date = wo_data['生產結束']
+            work_order_code = wo_data.get('工單編碼', '')
+            special_note = wo_data.get('特規備註', '')
             
             # 遍歷該工單的所有零件需求
             for part_number, part_data in wo_data['零件需求'].items():
@@ -247,6 +292,7 @@ def calculate_shortage():
                 if demand_qty > 0:
                     shortage_list.append({
                         '工單號碼': wo_number,
+                        '工單編碼': work_order_code,
                         '客戶名稱': customer,
                         '生產開始': start_date,
                         '生產結束': end_date,
@@ -258,6 +304,7 @@ def calculate_shortage():
                         '目前缺料': current_shortage if current_shortage > 0 else 0,
                         '現有庫存': current_stock,
                         '缺料數量': final_shortage if final_shortage > 0 else 0,
+                        '特規備註': special_note,
                         '狀態': '缺料' if final_shortage > 0 else ('充足' if final_shortage < 0 else '剛好')
                     })
         
@@ -276,6 +323,10 @@ def calculate_shortage():
         
         print(f"缺料分析完成: 共 {len(shortage_list)} 筆記錄")
         print(f"缺料項目: {len([x for x in shortage_list if x['缺料數量'] > 0])} 筆")
+        
+        # 更新快取
+        SHORTAGE_CACHE['mtimes'] = current_mtimes
+        SHORTAGE_CACHE['data'] = shortage_list
         
         return shortage_list
     

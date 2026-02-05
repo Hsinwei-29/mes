@@ -301,6 +301,7 @@
                     <thead>
                         <tr>
                             <th>工單號碼</th>
+                            <th>工單編碼</th>
                             <th>客戶名稱</th>
                             <th>生產開始</th>
                             <th>生產結束</th>
@@ -312,12 +313,13 @@
                             <th>目前缺料</th>
                             <th>現有庫存</th>
                             <th>缺料數量</th>
+                            <th>特規備註</th>
                             <th>狀態</th>
                         </tr>
                     </thead>
                     <tbody id="shortageTableBody">
                         <tr>
-                            <td colspan="13" class="loading">載入中...</td>
+                            <td colspan="15" class="loading">載入中...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -384,13 +386,14 @@
             const tbody = document.getElementById('shortageTableBody');
 
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="13" class="no-data">沒有符合條件的資料</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="15" class="no-data">沒有符合條件的資料</td></tr>';
                 return;
             }
 
             tbody.innerHTML = data.map(item => `
                 <tr>
                     <td>${item.工單號碼}</td>
+                    <td><code>${item.工單編碼 || '-'}</code></td>
                     <td>${item.客戶名稱}</td>
                     <td>${formatDate(item.生產開始)}</td>
                     <td>${formatDate(item.生產結束)}</td>
@@ -402,6 +405,7 @@
                     <td><strong>${item.目前缺料}</strong></td>
                     <td>${item.現有庫存}</td>
                     <td><strong style="color: ${item.缺料數量 > 0 ? '#c00' : '#0a0'}">${item.缺料數量}</strong></td>
+                    <td>${item.特規備註 || '-'}</td>
                     <td><span class="status-badge status-${item.狀態 === '缺料' ? 'shortage' : item.狀態 === '充足' ? 'sufficient' : 'exact'}">${item.狀態}</span></td>
                 </tr>
             `).join('');
@@ -450,13 +454,20 @@
         // 顯示錯誤
         function showError(message) {
             const tbody = document.getElementById('shortageTableBody');
-            tbody.innerHTML = `<tr><td colspan="13" class="no-data" style="color: #c00;">錯誤: ${message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="15" class="no-data" style="color: #c00;">錯誤: ${message}</td></tr>`;
         }
 
         // 事件監聽
         document.getElementById('filterPartType').addEventListener('change', filterData);
         document.getElementById('filterStatus').addEventListener('change', filterData);
         document.getElementById('searchInput').addEventListener('input', filterData);
+
+        // 檢查 URL 參數並設定篩選器
+        const urlParams = new URLSearchParams(window.location.search);
+        const partParam = urlParams.get('part');
+        if (partParam) {
+            document.getElementById('filterPartType').value = partParam;
+        }
 
         // 初始載入
         loadShortageData();

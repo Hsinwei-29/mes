@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>機型搜尋 - 協鴻工業</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        .search-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .search-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .search-box {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .search-input-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 1rem;
+            font-size: 1.125rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            transition: border-color 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-button {
+            padding: 1rem 2rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .search-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .search-button:active {
+            transform: translateY(0);
+        }
+
+        .result-container {
+            display: none;
+        }
+
+        .result-container.show {
+            display: block;
+        }
+
+        .result-header {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .result-header h2 {
+            margin: 0;
+            color: #667eea;
+            font-size: 1.5rem;
+        }
+
+        .parts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .part-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .part-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .part-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .part-card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .part-card-icon {
+            font-size: 2rem;
+        }
+
+        .part-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .stat-label {
+            font-weight: 600;
+            color: #666;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-value.semi {
+            color: #f59e0b;
+        }
+
+        .stat-value.finished {
+            color: #10b981;
+        }
+
+        .no-result {
+            background: white;
+            padding: 3rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            color: #999;
+            font-size: 1.125rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #667eea;
+            font-size: 1.125rem;
+        }
+
+        .back-button {
+            display: inline-block;
+            margin-bottom: 1rem;
+            padding: 0.5rem 1rem;
+            background: white;
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="search-container">
+        <a href="{{ url_for('main.index') }}" class="back-button">← 返回首頁</a>
+
+        <div class="search-header">
+            <h1>🔍 機型搜尋</h1>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">輸入機型名稱，查詢各鑄件的半品與成品數量</p>
+        </div>
+
+        <div class="search-box">
+            <div class="search-input-group">
+                <input type="text" id="modelInput" class="search-input" placeholder="請輸入機型名稱 (例如: VB-1165)"
+                    onkeypress="if(event.key==='Enter') searchModel()">
+                <button class="search-button" onclick="searchModel()">🔍 搜尋</button>
+            </div>
+            <p style="color: #666; margin: 0; font-size: 0.875rem;">
+                💡 提示：請輸入完整的機型名稱
+            </p>
+        </div>
+
+        <div id="resultContainer" class="result-container">
+            <!-- 搜尋結果會顯示在這裡 -->
+        </div>
+    </div>
+
+    <script>
+        async function searchModel() {
+            const input = document.getElementById('modelInput');
+            const modelName = input.value.trim();
+            const resultContainer = document.getElementById('resultContainer');
+
+            if (!modelName) {
+                alert('請輸入機型名稱');
+                return;
+            }
+
+            // 顯示載入中
+            resultContainer.className = 'result-container show';
+            resultContainer.innerHTML = '<div class="loading">🔄 搜尋中...</div>';
+
+            try {
+                const response = await fetch(`/api/search-model/${encodeURIComponent(modelName)}`);
+                const data = await response.json();
+
+                if (data.found) {
+                    displayResult(data);
+                } else {
+                    resultContainer.innerHTML = `
+                        <div class="no-result">
+                            ❌ 找不到機型「${modelName}」<br>
+                            <small style="margin-top: 1rem; display: block;">請確認機型名稱是否正確</small>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('搜尋錯誤:', error);
+                resultContainer.innerHTML = `
+                    <div class="no-result">
+                        ⚠️ 搜尋失敗<br>
+                        <small style="margin-top: 1rem; display: block;">${error.message}</small>
+                    </div>
+                `;
+            }
+        }
+
+        function displayResult(data) {
+            const icons = {
+                '工作台': '🔳',
+                '底座': '🔲',
+                '橫樑': '📏',
+                '立柱': '🏛️'
+            };
+
+            let html = `
+                <div class="result-header">
+                    <h2>📋 機型：${data.model}</h2>
+                    <small style="color: #999;">更新時間：${data.timestamp}</small>
+                </div>
+                <div class="parts-grid">
+            `;
+
+            for (const [partName, partData] of Object.entries(data.parts)) {
+                html += `
+                    <div class="part-card">
+                        <div class="part-card-header">
+                            <div class="part-card-title">${partName}</div>
+                            <div class="part-card-icon">${icons[partName] || '📦'}</div>
+                        </div>
+                        <div class="part-stats">
+                            <div class="stat-row">
+                                <span class="stat-label">半品</span>
+                                <span class="stat-value semi">${partData.半品}</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">成品</span>
+                                <span class="stat-value finished">${partData.成品}</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">總數</span>
+                                <span class="stat-value">${partData.總數}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            document.getElementById('resultContainer').innerHTML = html;
+        }
+
+        // 頁面載入時聚焦輸入框
+        window.onload = function () {
+            document.getElementById('modelInput').focus();
+        };
+    </script>
+</body>
+
+</html>

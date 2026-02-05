@@ -1,5 +1,338 @@
 [
   {
+    "timestamp": "2026-02-05 00:20:15",
+    "user": "hsinwei",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "成品",
+    "old_value": 4,
+    "new_value": 5
+  },
+  {
+    "timestamp": "2026-02-05 00:20:15",
+    "user": "hsinwei",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "W4",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:20:15",
+    "user": "hsinwei",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "W3",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:20:14",
+    "user": "hsinwei",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "W2",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:20:14",
+    "user": "hsinwei",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "W1",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:20:14",
+    "user": "hsinwei",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "素材",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:19:48",
+    "user": "System",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "成品 (出庫: 工單 100003456)",
+    "old_value": 5,
+    "new_value": 4
+  },
+  {
+    "timestamp": "2026-02-05 00:16:55",
+    "user": "hsinwei",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "成品",
+    "old_value": 4,
+    "new_value": 5
+  },
+  {
+    "timestamp": "2026-02-05 00:16:55",
+    "user": "hsinwei",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "W4",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:16:55",
+    "user": "hsinwei",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "W3",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:16:55",
+    "user": "hsinwei",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "W2",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:16:55",
+    "user": "hsinwei",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "W1",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:16:54",
+    "user": "hsinwei",
+    "part": "工作台",
+    "item_id": "8813001304",
+    "field": "素材",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:16:03",
+    "user": "hsinwei",
+    "part": "底座",
+    "item_id": "8810001490",
+    "field": "成品研磨",
+    "old_value": 4,
+    "new_value": 4
+  },
+  {
+    "timestamp": "2026-02-05 00:16:03",
+    "user": "hsinwei",
+    "part": "底座",
+    "item_id": "8810001490",
+    "field": "M3",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:16:03",
+    "user": "hsinwei",
+    "part": "底座",
+    "item_id": "8810001490",
+    "field": "M4",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:16:02",
+    "user": "hsinwei",
+    "part": "底座",
+    "item_id": "8810001490",
+    "field": "素材",
+    "old_value": 1,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:15:43",
+    "user": "hsinwei",
+    "part": "底座",
+    "item_id": "8810001490",
+    "field": "成品研磨",
+    "old_value": 3,
+    "new_value": 4
+  },
+  {
+    "timestamp": "2026-02-05 00:15:42",
+    "user": "hsinwei",
+    "part": "底座",
+    "item_id": "8810001490",
+    "field": "M3",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:15:42",
+    "user": "hsinwei",
+    "part": "底座",
+    "item_id": "8810001490",
+    "field": "M4",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:15:42",
+    "user": "hsinwei",
+    "part": "底座",
+    "item_id": "8810001490",
+    "field": "素材",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:09:53",
+    "user": "hsinwei",
+    "part": "立柱",
+    "item_id": "8811001616",
+    "field": "成品研磨",
+    "old_value": 3,
+    "new_value": 3
+  },
+  {
+    "timestamp": "2026-02-05 00:09:52",
+    "user": "hsinwei",
+    "part": "立柱",
+    "item_id": "8811001616",
+    "field": "成品銑工",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:09:52",
+    "user": "hsinwei",
+    "part": "立柱",
+    "item_id": "8811001616",
+    "field": "半品",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:09:52",
+    "user": "hsinwei",
+    "part": "立柱",
+    "item_id": "8811001616",
+    "field": "素材",
+    "old_value": 1,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:09:27",
+    "user": "hsinwei",
+    "part": "立柱",
+    "item_id": "8811001616",
+    "field": "成品研磨",
+    "old_value": 2,
+    "new_value": 3
+  },
+  {
+    "timestamp": "2026-02-05 00:09:26",
+    "user": "hsinwei",
+    "part": "立柱",
+    "item_id": "8811001616",
+    "field": "成品銑工",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:09:26",
+    "user": "hsinwei",
+    "part": "立柱",
+    "item_id": "8811001616",
+    "field": "半品",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:09:26",
+    "user": "hsinwei",
+    "part": "立柱",
+    "item_id": "8811001616",
+    "field": "素材",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:09:02",
+    "user": "hsinwei",
+    "part": "立柱",
+    "item_id": "8811001616",
+    "field": "成品研磨",
+    "old_value": 2,
+    "new_value": 3
+  },
+  {
+    "timestamp": "2026-02-05 00:09:01",
+    "user": "hsinwei",
+    "part": "立柱",
+    "item_id": "8811001616",
+    "field": "成品銑工",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:09:01",
+    "user": "hsinwei",
+    "part": "立柱",
+    "item_id": "8811001616",
+    "field": "半品",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-05 00:09:01",
+    "user": "hsinwei",
+    "part": "立柱",
+    "item_id": "8811001616",
+    "field": "素材",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-04 12:51:41",
+    "user": "guang",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "成品研磨",
+    "old_value": 2,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-04 12:51:40",
+    "user": "guang",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "M3",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-04 12:51:40",
+    "user": "guang",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "M4",
+    "old_value": 0,
+    "new_value": 0
+  },
+  {
+    "timestamp": "2026-02-04 12:51:40",
+    "user": "guang",
+    "part": "底座",
+    "item_id": "8810001322",
+    "field": "素材",
+    "old_value": 1,
+    "new_value": 1
+  },
+  {
     "timestamp": "2026-01-30 23:08:28",
     "user": "hsinwei",
     "part": "底座",

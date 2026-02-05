@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API 測試頁面</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        pre { background: #f5f5f5; padding: 15px; border-radius: 5px; }
+        .section { margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>API 數據測試</h1>
+    
+    <div class="section">
+        <h2>API 回應（原始 JSON）</h2>
+        <pre id="rawJson">載入中...</pre>
+    </div>
+    
+    <div class="section">
+        <h2>庫存總覽</h2>
+        <pre id="inventory">載入中...</pre>
+    </div>
+    
+    <script>
+        async function loadData() {
+            try {
+                // 加上時間戳避免快取
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/api/summary?t=${timestamp}`);
+                const data = await response.json();
+                
+                // 顯示原始 JSON
+                document.getElementById('rawJson').textContent = JSON.stringify(data, null, 2);
+                
+                // 顯示庫存
+                let inventoryText = '';
+                for (const [part, count] of Object.entries(data.inventory)) {
+                    inventoryText += `${part}: ${count}\n`;
+                }
+                document.getElementById('inventory').textContent = inventoryText;
+                
+            } catch (error) {
+                document.getElementById('rawJson').textContent = '錯誤: ' + error.message;
+            }
+        }
+        
+        loadData();
+        
+        // 每3秒自動重新載入
+        setInterval(loadData, 3000);
+    </script>
+</body>
+</html>

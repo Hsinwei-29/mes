@@ -7,6 +7,7 @@
     <title>庫存即時看板</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='stock_buttons.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 
@@ -98,7 +99,20 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <!-- 供需詳細資訊彈出視窗 -->
+    <div id="supplyDetailModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 id="supplyModalTitle">半品成品明細</h2>
+                <button class="modal-close" onclick="closeSupplyDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="supplyModalBody">
+                <div class="loading">載入中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}?v=20260204_2300"></script>
 </body>
 
 </html>
