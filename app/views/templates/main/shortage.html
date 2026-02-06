@@ -145,10 +145,11 @@
             color: #0a0;
         }
 
-        .status-exact {
-            background-color: #fef;
-            color: #909;
+        .status-completed {
+            background-color: #e6f7ff;
+            color: #1890ff;
         }
+
 
         .part-icon {
             font-size: 1.2rem;
@@ -301,7 +302,6 @@
                     <thead>
                         <tr>
                             <th>工單號碼</th>
-                            <th>工單編碼</th>
                             <th>客戶名稱</th>
                             <th>生產開始</th>
                             <th>生產結束</th>
@@ -319,7 +319,7 @@
                     </thead>
                     <tbody id="shortageTableBody">
                         <tr>
-                            <td colspan="15" class="loading">載入中...</td>
+                            <td colspan="14" class="loading">載入中...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -386,14 +386,13 @@
             const tbody = document.getElementById('shortageTableBody');
 
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="15" class="no-data">沒有符合條件的資料</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="14" class="no-data">沒有符合條件的資料</td></tr>';
                 return;
             }
 
             tbody.innerHTML = data.map(item => `
                 <tr>
                     <td>${item.工單號碼}</td>
-                    <td><code>${item.工單編碼 || '-'}</code></td>
                     <td>${item.客戶名稱}</td>
                     <td>${formatDate(item.生產開始)}</td>
                     <td>${formatDate(item.生產結束)}</td>
@@ -406,7 +405,7 @@
                     <td>${item.現有庫存}</td>
                     <td><strong style="color: ${item.缺料數量 > 0 ? '#c00' : '#0a0'}">${item.缺料數量}</strong></td>
                     <td>${item.特規備註 || '-'}</td>
-                    <td><span class="status-badge status-${item.狀態 === '缺料' ? 'shortage' : item.狀態 === '充足' ? 'sufficient' : 'exact'}">${item.狀態}</span></td>
+                    <td><span class="status-badge status-${item.狀態 === '缺料' ? 'shortage' : item.狀態 === '已領足' ? 'completed' : 'sufficient'}">${item.狀態}</span></td>
                 </tr>
             `).join('');
         }
@@ -454,7 +453,7 @@
         // 顯示錯誤
         function showError(message) {
             const tbody = document.getElementById('shortageTableBody');
-            tbody.innerHTML = `<tr><td colspan="15" class="no-data" style="color: #c00;">錯誤: ${message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="14" class="no-data" style="color: #c00;">錯誤: ${message}</td></tr>`;
         }
 
         // 事件監聽

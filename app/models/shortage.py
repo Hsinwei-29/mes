@@ -305,7 +305,7 @@ def calculate_shortage():
                         '現有庫存': current_stock,
                         '缺料數量': final_shortage if final_shortage > 0 else 0,
                         '特規備註': special_note,
-                        '狀態': '缺料' if final_shortage > 0 else ('充足' if final_shortage < 0 else '剛好')
+                        '狀態': '已領足' if picked_qty >= demand_qty else ('庫存足' if final_shortage <= 0 else '缺料')
                     })
         
         # 按生產開始日期升序（最早優先）、缺料數量降序、工單號碼升序排序
