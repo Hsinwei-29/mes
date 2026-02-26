@@ -3,9 +3,8 @@ from flask import current_app
 from datetime import datetime
 import os
 
-# 全域快取
-PICKING_CACHE = None
-PICKING_LAST_UPDATE = None
+# 全域快取（以 mtime 判斷是否需要重新讀取）
+PICKING_CACHE = {'mtime': 0, 'data': None}
 
 # 工單快取
 ORDERS_CACHE = {'mtime': 0, 'data': None}
@@ -27,33 +26,35 @@ def find_col(df, keywords):
     return None
 
 def get_picking_data():
-    """讀取成品撥料資料，回傳以訂單為 Key 的需求資料 (含快取)"""
-    global PICKING_CACHE, PICKING_LAST_UPDATE
-    
-    if PICKING_CACHE is not None:
-        return PICKING_CACHE
-        
+    """讀取成品撥料資料，回傳以訂單為 Key 的需求資料 (含 mtime 快取)"""
+    global PICKING_CACHE
+
     try:
         picking_file = current_app.config['PICKING_FILE']
+        mtime = os.path.getmtime(picking_file)
+
+        # 若快取仍有效，直接回傳
+        if PICKING_CACHE['mtime'] == mtime and PICKING_CACHE['data'] is not None:
+            return PICKING_CACHE['data']
+
         print(f"Loading Picking Data from {picking_file}...")
-        # 讀取撥料單 (Excel 常態無亂碼)
         df = pd.read_excel(picking_file, usecols=[0, 1, 4, 5, 8])
         df.columns = ['訂單', '物料', '未結數量', '物料說明', '需求日期']
-        
+
         picking_map = {}
         for _, row in df.iterrows():
             order_id = clean_id(row['訂單'])
             if not order_id: continue
-                
+
             qty = row['未結數量']
             if pd.isna(qty) or qty <= 0: continue
-                
+
             item_name = str(row['物料說明'])
             need_date = row['需求日期']
-            
+
             if order_id not in picking_map:
                 picking_map[order_id] = {'底座': 0, '工作台': 0, '橫樑': 0, '立柱': 0, 'dates': []}
-            
+
             if '底座' in item_name and '馬達' not in item_name:
                 picking_map[order_id]['底座'] += qty
             elif '工作台' in item_name:
@@ -62,16 +63,17 @@ def get_picking_data():
                 picking_map[order_id]['橫樑'] += qty
             elif '立柱' in item_name:
                 picking_map[order_id]['立柱'] += qty
-                
+
             if pd.notna(need_date):
                 picking_map[order_id]['dates'].append(need_date)
-        
-        PICKING_CACHE = picking_map
-        PICKING_LAST_UPDATE = datetime.now()
+
+        # 更新快取
+        PICKING_CACHE['mtime'] = mtime
+        PICKING_CACHE['data'] = picking_map
         return picking_map
     except Exception as e:
         print(f"Error loading picking data: {e}")
-        return {}
+        return PICKING_CACHE['data'] or {}
 
 def load_orders():
     """載入工單總表資料並整合撥料需求 (整合多分頁並解決亂碼)"""

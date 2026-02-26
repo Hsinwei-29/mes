@@ -41,7 +41,7 @@ const TRANSLATIONS = {
         PART_CROSSBEAM: '橫樑',
         PART_COLUMN: '立柱',
         KEY_RAW: '素材',
-        KEY_WIP: '半品',
+        KEY_WIP: '在製品',
         KEY_P1: '製程一',
         KEY_P2: '製程二',
         KEY_P3: '製程三',
@@ -467,7 +467,7 @@ function renderSupplyDemand(data) {
                 </div>
                 <div class="card-stats">
                     <div class="stat-item">
-                        <div class="stat-label">半品</div>
+                        <div class="stat-label">在製品</div>
                         <div class="stat-value stock">${item.半品}</div>
                     </div>
                     <div class="stat-item">
@@ -810,7 +810,7 @@ async function showSupplyDetailModal(partName) {
     if (!modal || !modalBody || !modalTitle) return;
 
     // 設定標題
-    modalTitle.textContent = `${PART_ICONS[partName] || '📦'} ${partName} - 半品成品明細`;
+    modalTitle.textContent = `${PART_ICONS[partName] || '📦'} ${partName} - 在製品成品明細`;
 
     // 顯示載入中
     modalBody.innerHTML = '<div class="loading">載入中...</div>';

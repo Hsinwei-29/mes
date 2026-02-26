@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ part_icon }} {{ part_name }} - 半品成品明細</title>
+    <title>{{ part_icon }} {{ part_name }} - 在製品成品明細</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -139,7 +139,7 @@
         <a href="{{ url_for('main.index') }}" class="back-button">← 返回首頁</a>
 
         <div class="part-header">
-            <h1>{{ part_icon }} {{ part_name }} - 半品成品明細</h1>
+            <h1>{{ part_icon }} {{ part_name }} - 在製品成品明細</h1>
             <div class="subtitle">更新時間：{{ timestamp }}</div>
         </div>
 
@@ -151,7 +151,7 @@
                 <div class="value">{{ data.rows|length }}</div>
             </div>
             <div class="summary-card">
-                <div class="label">半品數</div>
+                <div class="label">在製品數</div>
                 <div class="value" style="color: #f59e0b;">{{ total_semi }}</div>
             </div>
             <div class="summary-card">

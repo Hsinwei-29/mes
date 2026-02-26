@@ -20,13 +20,20 @@ def calculate_supply_demand():
     # 從缺料分析取得真實需求（只計算實際缺料的數量）
     shortage_list = calculate_shortage()
     
+    # 紀錄某大類是否存在這類「嚴重缺料」(即該零件缺料且對應機型無在製品)
+    hard_shortage = {'工作台': False, '底座': False, '橫樑': False, '立柱': False}
+    
     # 計算各鑄件的缺料數量
     demand = {'工作台': 0, '底座': 0, '橫樑': 0, '立柱': 0}
     for item in shortage_list:
         part_type = item.get('零件類型', '')
         shortage_qty = item.get('缺料數量', 0)
+        semi_qty = item.get('現有在製品', 0)
+        
         if part_type in demand and shortage_qty > 0:
             demand[part_type] += shortage_qty
+            if semi_qty == 0:
+                hard_shortage[part_type] = True
     
     analysis = []
     for part in ['工作台', '底座', '橫樑', '立柱']:
@@ -35,7 +42,14 @@ def calculate_supply_demand():
         fin = finished.get(part, 0)
         need = demand.get(part, 0)
         diff = stock - need
-        status = '充足' if diff >= 0 else '不足'
+        
+        # 判斷邏輯：
+        # - 如果該大類有任何機型「真正缺料」(即 need > 0 且該機型 semi == 0)，那就顯示「不足」
+        # - 如果該大類所有缺料機型都還有在製品 (該機型 semi > 0)，就當作正在加工中(算充足)
+        if hard_shortage.get(part, False):
+            # 設為 1 確保前端判定為 'STATUS_WARNING' (不足)
+            diff = 1
+        
         analysis.append({
             '鑄件': part, 
             '庫存': stock, 
@@ -43,7 +57,6 @@ def calculate_supply_demand():
             '成品': fin,
             '需求': need, 
             '差異': diff, 
-            '狀態': status
         })
     return analysis
 

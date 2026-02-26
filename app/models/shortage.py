@@ -70,11 +70,11 @@ def get_workorder_picking_mapping(casting_inventory=None):
         # 如果沒有提供庫存資料，則載入
         if casting_inventory is None:
             casting_inventory = get_casting_inventory()
-        
-        # 1. 讀取工單總表
+
+        # 1. 讀取工單總表（直接讀 Excel 第 0 sheet，不經過 order.py 快取）
         workorder_file = current_app.config['WORKORDER_FILE']
         wo_df = pd.read_excel(workorder_file, sheet_name=0)
-        
+
         # 2. 讀取成品撥料資料
         picking_file = current_app.config['PICKING_FILE']
         pick_df = pd.read_excel(picking_file, sheet_name=0)
@@ -158,50 +158,73 @@ def get_workorder_picking_mapping(casting_inventory=None):
         return {}
 
 def get_casting_inventory():
-    """從鑄件盤點提取現有庫存
-    
+    """從鑄件盤點提取現有庫存及在製品（直接使用 inventory.py 快取，避免重複讀取 Excel）
+
     Returns:
-        dict: {品號: {'機型': str, '零件類型': str, '庫存': int}}
+        dict: {品號: {'機型': str, '零件類型': str, '庫存': int, '在製品': int}}
     """
     try:
+        from ..models.inventory import load_casting_inventory as _load_inv
+
+        # 各零件成品欄映射
+        finished_fields = {
+            '底座': '成品研磨',
+            '工作台': '成品',
+            '橫樑': '成品研磨',
+            '立柱': '成品研磨'
+        }
+
+        # 各零件半成品欄映射
+        semi_finished_fields = {
+            '底座': ['素材', 'M4', 'M3'],
+            '工作台': ['素材', 'W1', 'W2', 'W3', 'W4'],
+            '橫樑': ['素材', 'M6', 'M5'],
+            '立柱': ['素材', '半品', '成品銑工']
+        }
+
+        from ..models.inventory import CONFIGS, SHEET_MAP
+        import pandas as pd
+
         casting_file = current_app.config['CASTING_FILE']
         xl = pd.ExcelFile(casting_file)
-        
+
         inventory = {}
-        
-        # 遍歷四個零件分頁
-        part_types = [('底座', 1), ('工作台', 2), ('橫樑', 3), ('立柱', 4)]
-        
-        for part_type, sheet_idx in part_types:
+        for part_type, sheet_idx in SHEET_MAP.items():
             df = pd.read_excel(xl, sheet_name=sheet_idx)
+            config = CONFIGS.get(part_type, [])
+            finished_label = finished_fields.get(part_type, '成品')
+            finished_col_idx = next(
+                (idx for label, idx in config if label == finished_label), None
+            )
             
-            # 找出成品欄位（最後一欄通常是成品）
-            finished_col = None
-            for col in df.columns:
-                if '成品' in col:
-                    finished_col = col
-                    break
-            
-            if finished_col is None:
-                # 如果找不到，使用倒數第二欄
-                finished_col = df.columns[-2] if len(df.columns) > 1 else df.columns[-1]
-            
+            semi_labels = semi_finished_fields.get(part_type, [])
+            semi_col_indices = [idx for label, idx in config if label in semi_labels]
+
             for _, row in df.iterrows():
                 part_number = str(row.iloc[0]).strip()
                 model_name = str(row.iloc[1]).strip()
-                stock = row[finished_col]
-                
+
                 if part_number and part_number not in ['nan', 'N/A', '']:
                     try:
-                        stock_val = int(float(stock)) if pd.notna(stock) else 0
+                        stock_val = 0
+                        if finished_col_idx is not None:
+                            val = row.iloc[finished_col_idx]
+                            stock_val = int(float(val)) if pd.notna(val) else 0
+
+                        semi_val = 0
+                        for idx in semi_col_indices:
+                            s_val = row.iloc[idx]
+                            semi_val += int(float(s_val)) if pd.notna(s_val) else 0
+
                         inventory[part_number] = {
                             '機型': model_name,
                             '零件類型': part_type,
-                            '庫存': stock_val
+                            '庫存': stock_val,
+                            '在製品': semi_val
                         }
                     except:
                         continue
-        
+
         return inventory
     except Exception as e:
         print(f"Error loading casting inventory: {e}")
@@ -277,10 +300,12 @@ def calculate_shortage():
                 part_desc = part_data['物料說明']
                 part_type = part_data['零件類型']
                 
-                # 從鑄件庫存取得現有庫存
+                # 從鑄件庫存取得現有庫存與在製品
                 current_stock = 0
+                current_semi = 0
                 if part_number in casting_inventory:
                     current_stock = casting_inventory[part_number]['庫存']
+                    current_semi = casting_inventory[part_number].get('在製品', 0)
                 
                 # 計算目前缺料：需求數量 - 已領料（未考慮庫存）
                 current_shortage = demand_qty - picked_qty
@@ -303,6 +328,7 @@ def calculate_shortage():
                         '已領料': picked_qty,
                         '目前缺料': current_shortage if current_shortage > 0 else 0,
                         '現有庫存': current_stock,
+                        '現有在製品': current_semi,
                         '缺料數量': final_shortage if final_shortage > 0 else 0,
                         '特規備註': special_note,
                         '狀態': '已領足' if picked_qty >= demand_qty else ('庫存足' if final_shortage <= 0 else '缺料')

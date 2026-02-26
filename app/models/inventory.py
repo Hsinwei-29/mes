@@ -5,6 +5,10 @@ from datetime import datetime
 import json
 import os
 
+# ── 快取 ────────────────────────────────────────────────────────────
+_INVENTORY_CACHE = {'mtime': 0, 'data': None}
+_MASTER_MODEL_CACHE = {'mtime': 0, 'data': None}
+
 def normalize_model_name(model_name):
     """標準化機型名稱，移除後綴變體"""
     import re
@@ -26,12 +30,18 @@ def normalize_model_name(model_name):
 
 def _get_master_model_list():
     """從所有零件工作表收集完整機型清單（保留原始名稱，智能分組排序）"""
+    global _MASTER_MODEL_CACHE
     try:
         casting_file = current_app.config['CASTING_FILE']
+        mtime = os.path.getmtime(casting_file)
+
+        # 若快取仍有效，直接回傳
+        if _MASTER_MODEL_CACHE['mtime'] == mtime and _MASTER_MODEL_CACHE['data'] is not None:
+            return _MASTER_MODEL_CACHE['data']
+
         xl = pd.ExcelFile(casting_file)
-        
         all_models = set()
-        
+
         # 從四個零件分頁收集所有機型
         for sheet_name, sheet_idx in [('底座', 1), ('工作台', 2), ('橫樑', 3), ('立柱', 4)]:
             try:
@@ -46,24 +56,34 @@ def _get_master_model_list():
                             all_models.add(model_str)
             except Exception as e:
                 print(f"Error reading {sheet_name}: {e}")
-        
+
         # 智能排序：先按標準化名稱分組，再按原始名稱排序
         def sort_key(model_name):
-            # 使用標準化名稱作為主排序鍵，原始名稱作為次排序鍵
             normalized = normalize_model_name(model_name)
-            # 移除連字符進行比較，讓 HSA636 和 HSA-636 視為相同
             normalized_no_dash = normalized.replace('-', '').replace('_', '')
             return (normalized_no_dash, model_name)
-        
-        return sorted(list(all_models), key=sort_key)
+
+        result = sorted(list(all_models), key=sort_key)
+
+        # 更新快取
+        _MASTER_MODEL_CACHE['mtime'] = mtime
+        _MASTER_MODEL_CACHE['data'] = result
+        return result
     except Exception as e:
         print(f"Error loading master model list: {e}")
         return []
 
 def load_casting_inventory():
-    """載入鑄件庫存資料"""
+    """載入鑄件庫存資料（含快取：只有 Excel 修改時才重新讀取）"""
+    global _INVENTORY_CACHE
     try:
         casting_file = current_app.config['CASTING_FILE']
+        mtime = os.path.getmtime(casting_file)
+
+        # 若快取仍有效，直接回傳
+        if _INVENTORY_CACHE['mtime'] == mtime and _INVENTORY_CACHE['data'] is not None:
+            return _INVENTORY_CACHE['data']
+
         xl = pd.ExcelFile(casting_file)
         
         # 從各個鑄件工作表計算總數
@@ -203,13 +223,18 @@ def load_casting_inventory():
         # 轉換機型數據為列表 (包含零庫存機型)
         details = list(all_models.values())
         
-        return {
-            'summary': inventory, 
+        result = {
+            'summary': inventory,
             'semi_finished': semi_finished,
             'finished': finished,
-            'details': details, 
+            'details': details,
             'all_models': all_models
         }
+
+        # 更新快取
+        _INVENTORY_CACHE['mtime'] = mtime
+        _INVENTORY_CACHE['data'] = result
+        return result
     except Exception as e:
         print(f"Error loading casting inventory: {e}")
         return {'summary': {}, 'semi_finished': {}, 'finished': {}, 'details': [], 'all_models': {}, 'error': str(e)}
