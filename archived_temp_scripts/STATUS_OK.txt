@@ -1,0 +1,6 @@
+Server: http://localhost:5010
+Shortage Page: http://localhost:5010/shortage
+Casting Page: http://localhost:5010/casting/工作台
+Status: Running
+Last Update: 2026-02-11
+User Request: Unable to connect -> Fixed port 5010.

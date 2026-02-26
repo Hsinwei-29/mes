@@ -43,3 +43,4 @@ sheets_output.txt
 缺料分析報表_*.xlsx
 app/views/static/~*
 [0-9A-F]*000
+venv/

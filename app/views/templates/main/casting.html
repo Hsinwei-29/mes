@@ -563,6 +563,13 @@
                 <div class="history-modal-body" style="padding: 2rem;">
                     <form id="stockInForm" style="display: flex; flex-direction: column; gap: 1.5rem;">
                         <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">📷 條碼掃描 / 輸入
+                                (選填)：</label>
+                            <input type="text" id="stockInBarcode"
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
+                                placeholder="請掃描鑄件條碼或是輸入..." autocomplete="off">
+                        </div>
+                        <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">機型：</label>
                             <select id="stockInModel" required
                                 style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;">
@@ -657,6 +664,21 @@
         const partName = '{{ part_name }}';
         const isAdmin = {{ 'true' if is_admin else 'false' }};
         const isLoggedIn = {{ 'true' if is_logged_in else 'false' }};
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // 條碼輸入框 Enter 處理
+            const barcodeInput = document.getElementById('stockInBarcode');
+            if (barcodeInput) {
+                barcodeInput.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        // 之後可以在這裡添加解析邏輯
+                        const modelSelect = document.getElementById('stockInModel');
+                        if (modelSelect) modelSelect.focus();
+                    }
+                });
+            }
+        });
 
         // 自動計算總數
         document.addEventListener('DOMContentLoaded', function () {
@@ -890,6 +912,12 @@
             // 打開模態視窗
             const modal = document.getElementById('stockInModal');
             modal.classList.add('active');
+
+            // 聚焦在條碼輸入框
+            setTimeout(() => {
+                const barcodeInput = document.getElementById('stockInBarcode');
+                if (barcodeInput) barcodeInput.focus();
+            }, 300);
 
             // 載入該零件的所有機型
             const modelSelect = document.getElementById('stockInModel');
