@@ -20,7 +20,7 @@ def calculate_supply_demand():
     # 從缺料分析取得真實需求（只計算實際缺料的數量）
     shortage_list = calculate_shortage()
     
-    # 紀錄某大類是否存在這類「嚴重缺料」(即該零件缺料且對應機型無在製品)
+    # 紀錄某大類是否存在「嚴重缺料」 (即該零件缺料且全無素材可下料)
     hard_shortage = {'工作台': False, '底座': False, '橫樑': False, '立柱': False}
     
     # 計算各鑄件的缺料數量
@@ -28,11 +28,12 @@ def calculate_supply_demand():
     for item in shortage_list:
         part_type = item.get('零件類型', '')
         shortage_qty = item.get('缺料數量', 0)
-        semi_qty = item.get('現有在製品', 0)
+        material_qty = item.get('現有素材', 0)  # 素材數量
         
         if part_type in demand and shortage_qty > 0:
             demand[part_type] += shortage_qty
-            if semi_qty == 0:
+            # 完全沒有素材才算嚴重缺料（有素材表示還可加工，不算不足）
+            if material_qty == 0:
                 hard_shortage[part_type] = True
     
     analysis = []
@@ -44,8 +45,8 @@ def calculate_supply_demand():
         diff = stock - need
         
         # 判斷邏輯：
-        # - 如果該大類有任何機型「真正缺料」(即 need > 0 且該機型 semi == 0)，那就顯示「不足」
-        # - 如果該大類所有缺料機型都還有在製品 (該機型 semi > 0)，就當作正在加工中(算充足)
+        # - 如果該大類有任何機型「完全沒素材」且缺料，顯示「不足」
+        # - 如果該大類缺料的機型還有素材 (可接續加工)，雖缺料不題示「不足」
         if hard_shortage.get(part, False):
             # 設為 1 確保前端判定為 'STATUS_WARNING' (不足)
             diff = 1
@@ -322,6 +323,36 @@ def api_shortage():
         }), 500
 
 
+@api_bp.route('/shortage/critical/<part_type>')
+def api_shortage_critical(part_type):
+    """取得指定零件類型中「有缺料且完全無素材」的清單（供首頁不足Modal）"""
+    from ..models.shortage import calculate_shortage
+    try:
+        shortage_list = calculate_shortage()
+        # 篩選：指定類型 + 有缺料 + 無素材
+        critical = [
+            x for x in shortage_list
+            if x.get('零件類型') == part_type
+            and x.get('缺料數量', 0) > 0
+            and x.get('現有素材', 0) == 0
+        ]
+        # 也取得有缺料但有素材的（可加工中）
+        with_material = [
+            x for x in shortage_list
+            if x.get('零件類型') == part_type
+            and x.get('缺料數量', 0) > 0
+            and x.get('現有素材', 0) > 0
+        ]
+        return jsonify({
+            'success': True,
+            'part_type': part_type,
+            'critical': critical,
+            'with_material': with_material,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @api_bp.route('/stock/in', methods=['POST'])
 @login_required
 def stock_in():
@@ -393,4 +424,116 @@ def stock_out():
             return jsonify(result), 400
             
     except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/export/inventory')
+def export_inventory():
+    """匯出鑄件庫存明細為 Excel"""
+    import io
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from flask import send_file
+    from ..models.inventory import SHEET_MAP, get_part_details
+
+    try:
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)  # 移除預設空白頁
+
+        # 每個零件類型一個工作表
+        for part_type in ['工作台', '底座', '橫樑', '立柱']:
+            data = get_part_details(part_type)
+            headers = data.get('headers', [])
+            rows = data.get('rows', [])
+
+            ws = wb.create_sheet(title=part_type)
+
+            # 表頭樣式
+            header_fill = PatternFill('solid', fgColor='4472C4')
+            header_font = Font(bold=True, color='FFFFFF', size=11)
+            center = Alignment(horizontal='center', vertical='center')
+            thin = Border(
+                left=Side(style='thin'), right=Side(style='thin'),
+                top=Side(style='thin'), bottom=Side(style='thin')
+            )
+
+            # 寫入標頭
+            for col_idx, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col_idx, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = center
+                cell.border = thin
+
+            # 寫入資料
+            for row_idx, row in enumerate(rows, 2):
+                alt_fill = PatternFill('solid', fgColor='EEF2FF') if row_idx % 2 == 0 else None
+                for col_idx, header in enumerate(headers, 1):
+                    val = row.get(header, '')
+                    if val is None:
+                        val = 0
+                    cell = ws.cell(row=row_idx, column=col_idx, value=val)
+                    cell.alignment = center if col_idx > 2 else Alignment(horizontal='left', vertical='center')
+                    cell.border = thin
+                    if alt_fill:
+                        cell.fill = alt_fill
+                    # 最後一欄（總數）加粗
+                    if col_idx == len(headers):
+                        cell.font = Font(bold=True, color='1E40AF')
+
+            # 自動欄寬
+            for col in ws.columns:
+                max_len = max((len(str(c.value or '')) for c in col), default=8)
+                ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 30)
+
+            # 凍結首列
+            ws.freeze_panes = 'A2'
+
+        # 加一個「缺料分析」工作表
+        from ..models.shortage import calculate_shortage
+        shortage_list = calculate_shortage()
+        ws_s = wb.create_sheet(title='缺料分析')
+
+        s_headers = ['工單號碼', '客戶名稱', '生產結束', '品號', '物料說明', '零件類型',
+                     '需求數量', '已領料', '目前缺料', '現有庫存', '現有在製品', '現有素材', '缺料數量', '狀態']
+        header_fill2 = PatternFill('solid', fgColor='C00000')
+
+        for col_idx, h in enumerate(s_headers, 1):
+            cell = ws_s.cell(row=1, column=col_idx, value=h)
+            cell.font = Font(bold=True, color='FFFFFF', size=11)
+            cell.fill = header_fill2
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = thin
+
+        for row_idx, item in enumerate(shortage_list, 2):
+            vals = [item.get(h, '') for h in s_headers]
+            alt_fill = PatternFill('solid', fgColor='FFF0F0') if item.get('缺料數量', 0) > 0 else (
+                PatternFill('solid', fgColor='F0FFF0') if row_idx % 2 == 0 else None)
+            for col_idx, val in enumerate(vals, 1):
+                cell = ws_s.cell(row=row_idx, column=col_idx, value=val if val is not None else '')
+                cell.border = thin
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                if alt_fill:
+                    cell.fill = alt_fill
+
+        for col in ws_s.columns:
+            max_len = max((len(str(c.value or '')) for c in col), default=8)
+            ws_s.column_dimensions[col[0].column_letter].width = min(max_len + 4, 40)
+        ws_s.freeze_panes = 'A2'
+
+        # 輸出
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        filename = f"鑄件庫存_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500

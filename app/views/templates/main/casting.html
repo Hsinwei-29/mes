@@ -484,6 +484,32 @@
             </div>
             {% endif %}
 
+
+            <!-- 機型搜尋框 -->
+            <div style="margin: 0 0 1.25rem 0; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                <label
+                    style="color: var(--text-secondary); font-size: 0.95rem; white-space: nowrap; font-weight: 600;">🔍
+                    機型查詢：</label>
+                <input type="text" id="modelSearchInput" placeholder="輸入機型名稱即時過濾..." oninput="filterByModel(this.value)"
+                    style="flex: 1; min-width: 200px; max-width: 360px;
+                           padding: 0.55rem 1rem;
+                           border: 1.5px solid var(--border-color);
+                           border-radius: var(--radius-sm);
+                           background: var(--bg-secondary);
+                           color: var(--text-primary);
+                           font-size: 0.95rem;
+                           transition: border-color 0.2s, box-shadow 0.2s;"
+                    onfocus="this.style.borderColor='#2563eb'; this.style.boxShadow='0 0 0 3px rgba(37,99,235,0.15)'"
+                    onblur="this.style.borderColor=''; this.style.boxShadow=''">
+                <span id="modelSearchCount" style="color: var(--text-muted); font-size: 0.875rem;"></span>
+                <button onclick="document.getElementById('modelSearchInput').value=''; filterByModel('');" style="padding: 0.45rem 0.9rem; background: none;
+                           border: 1.5px solid var(--border-color); border-radius: var(--radius-sm);
+                           color: var(--text-secondary); cursor: pointer;
+                           font-size: 0.85rem; transition: all 0.2s;"
+                    onmouseover="this.style.borderColor='#2563eb'; this.style.color='#2563eb'"
+                    onmouseout="this.style.borderColor=''; this.style.color=''">✕ 清除</button>
+            </div>
+
             <table class="edit-table" id="editTable">
                 <thead>
                     <tr>
@@ -716,6 +742,42 @@
 
             totalCell.textContent = total;
         }
+
+        /**
+         * 依機型名稱即時過濾表格列
+         */
+        function filterByModel(query) {
+            const tbody = document.getElementById('editTableBody');
+            if (!tbody) return;
+            const rows = tbody.querySelectorAll('tr');
+            const q = (query || '').trim().toLowerCase();
+            let shown = 0;
+            rows.forEach(row => {
+                const modelCell = row.querySelector('td.model-col');
+                const modelText = modelCell ? modelCell.textContent.trim().toLowerCase() : '';
+                const match = !q || modelText.includes(q);
+                row.style.display = match ? '' : 'none';
+                if (match) shown++;
+            });
+            const countEl = document.getElementById('modelSearchCount');
+            if (countEl) {
+                if (q) {
+                    countEl.textContent = `找到 ${shown} / ${rows.length} 筆`;
+                    countEl.style.color = shown === 0 ? '#dc2626' : '#059669';
+                } else {
+                    countEl.textContent = `共 ${rows.length} 筆`;
+                    countEl.style.color = '';
+                }
+            }
+        }
+
+        // 頁面載入後初始化計數
+        document.addEventListener('DOMContentLoaded', function () {
+            filterByModel('');
+            // 搜尋框自動 focus
+            const searchInput = document.getElementById('modelSearchInput');
+            if (searchInput) searchInput.focus();
+        });
 
         // WebSocket 連接
         const socket = io();

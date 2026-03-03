@@ -49,5 +49,35 @@ def create_app(config_name='default'):
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(auth_bp)
-    
+
+    # ── 背景預熱快取 ────────────────────────────────────────────────
+    def _warmup_cache():
+        """伺服器啟動後在背景預先載入所有耗時資料，讓第一次使用者請求秒回。"""
+        import time
+        time.sleep(1)  # 等 Flask 完全啟動
+        with app.app_context():
+            try:
+                t0 = time.time()
+                print("[WARMUP] 開始預熱快取...")
+                from app.models.inventory import load_casting_inventory
+                load_casting_inventory()
+                print(f"[WARMUP] inventory OK ({(time.time()-t0)*1000:.0f} ms)")
+
+                from app.models.order import load_orders
+                load_orders()
+                print(f"[WARMUP] orders OK ({(time.time()-t0)*1000:.0f} ms)")
+
+                from app.models.shortage import calculate_shortage
+                calculate_shortage()
+                print(f"[WARMUP] shortage OK ({(time.time()-t0)*1000:.0f} ms)")
+
+                print(f"[WARMUP] 快取預熱完成，總耗時 {(time.time()-t0)*1000:.0f} ms")
+            except Exception as e:
+                print(f"[WARMUP] 預熱失敗: {e}")
+
+    import threading
+    _t = threading.Thread(target=_warmup_cache, daemon=True, name="cache-warmup")
+    _t.start()
+    # ────────────────────────────────────────────────────────────────
+
     return app

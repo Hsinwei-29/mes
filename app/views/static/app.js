@@ -460,7 +460,7 @@ function renderSupplyDemand(data) {
         const diffDisplay = item.差異 < 0 ? '-1' : `${diffSign}${item.差異}`;
 
         return `
-            <div class="supply-card ${statusClass}" onclick="window.location.href='/part/${encodeURIComponent(item.鑄件)}'" style="cursor: pointer;">
+            <div class="supply-card ${statusClass}" onclick="window.location.href='/casting/${encodeURIComponent(item.鑄件)}'" style="cursor: pointer;">
                 <div class="card-header">
                     <span class="card-title">${PART_ICONS[item.鑄件] || '📦'} ${tDynamic(item.鑄件)}</span>
                     <span class="card-badge ${statusClass}">${badgeText}</span>
@@ -475,12 +475,12 @@ function renderSupplyDemand(data) {
                         <div class="stat-value stock">${item.成品}</div>
                     </div>
                     <div class="stat-item" 
-                         style="cursor: pointer; transition: all 0.2s ease;" 
-                         onclick="window.location.href='/shortage?part=${encodeURIComponent(item.鑄件)}'" 
-                         onmouseover="this.style.transform='scale(1.05)'; this.style.background='#f0f9ff';" 
-                         onmouseout="this.style.transform='scale(1)'; this.style.background='transparent';"
+                         style="cursor: pointer; transition: all 0.2s ease; border-radius: 6px; padding: 4px;" 
+                         onclick="event.stopPropagation(); window.location.href='/shortage?part=${encodeURIComponent(item.鑄件)}'" 
+                         onmouseover="this.style.background='rgba(37,99,235,0.1)'; this.style.outline='1.5px solid #2563eb';" 
+                         onmouseout="this.style.background=''; this.style.outline='';"
                          title="點擊查看缺料分析">
-                        <div class="stat-label">${t('DEMAND')}</div>
+                        <div class="stat-label">${t('DEMAND')} 🔗</div>
                         <div class="stat-value demand">${item.需求}</div>
                     </div>
                 </div>
@@ -800,7 +800,94 @@ window.onclick = function (event) {
 }
 
 /**
- * 顯示供需詳細資訊模態視窗
+ * 顯示不足缺料明細 Modal
+ */
+async function showShortageDetailModal(partName) {
+    const modal = document.getElementById('supplyDetailModal');
+    const modalBody = document.getElementById('supplyModalBody');
+    const modalTitle = document.getElementById('supplyModalTitle');
+    if (!modal || !modalBody || !modalTitle) return;
+
+    modalTitle.textContent = `${PART_ICONS[partName] || '📦'} ${partName} - 缺料明細`;
+    modalBody.innerHTML = '<div class="loading">載入缺料資料...</div>';
+    modal.style.display = 'flex';
+
+    try {
+        const response = await fetch(`${API_BASE}/api/shortage/critical/${encodeURIComponent(partName)}`);
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error || '載入失敗');
+
+        const critical = data.critical || [];
+        const withMaterial = data.with_material || [];
+
+        const renderRows = (items) => items.map(item => `
+            <tr>
+                <td><code style="font-size:0.82em;">${item.工單號碼}</code></td>
+                <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.客戶名稱}">${item.客戶名稱}</td>
+                <td>${item.生產結束 ? new Date(item.生產結束).toLocaleDateString('zh-TW') : '-'}</td>
+                <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.物料說明}">${item.物料說明}</td>
+                <td style="text-align:center;">${item.需求數量}</td>
+                <td style="text-align:center;">${item.已領料}</td>
+                <td style="text-align:center; font-weight:bold; color:#c00;">${item.缺料數量}</td>
+                <td style="text-align:center;">${item.現有素材}</td>
+            </tr>
+        `).join('');
+
+        const tableHeader = `
+            <thead>
+                <tr style="background: linear-gradient(135deg,#667eea,#764ba2); color:white;">
+                    <th>工單號碼</th><th>客戶</th><th>生產結束</th><th>物料說明</th>
+                    <th>需求</th><th>已領料</th><th>缺料數量</th><th>現有素材</th>
+                </tr>
+            </thead>`;
+
+        let html = '';
+
+        // --- 嚴重缺料區塊 ---
+        if (critical.length > 0) {
+            html += `
+                <div style="margin-bottom:1.5rem;">
+                    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
+                        <span style="background:#fee2e2;color:#c00;padding:3px 10px;border-radius:12px;font-size:0.85rem;font-weight:600;">🔴 嚴重缺料 — 完全沒有素材 (${critical.length} 筆)</span>
+                    </div>
+                    <div class="details-table-wrapper" style="border-radius:8px;overflow:hidden;border:1px solid #fca5a5;">
+                        <table class="details-table" style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+                            ${tableHeader}
+                            <tbody>${renderRows(critical)}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }
+
+        // --- 可加工區塊 ---
+        if (withMaterial.length > 0) {
+            html += `
+                <div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
+                        <span style="background:#fef9c3;color:#92400e;padding:3px 10px;border-radius:12px;font-size:0.85rem;font-weight:600;">🟡 可加工中 — 有素材可繼續 (${withMaterial.length} 筆)</span>
+                    </div>
+                    <div class="details-table-wrapper" style="border-radius:8px;overflow:hidden;border:1px solid #fde68a;">
+                        <table class="details-table" style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+                            ${tableHeader}
+                            <tbody>${renderRows(withMaterial)}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }
+
+        if (!html) {
+            html = '<div style="text-align:center;padding:2rem;color:#999;">目前沒有缺料項目</div>';
+        }
+
+        modalBody.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading shortage detail:', error);
+        modalBody.innerHTML = `<div class="loading" style="color:#c00;">載入失敗: ${error.message}</div>`;
+    }
+}
+
+/**
+ * 顯示供需詳細資訊模態視窗 (保留舊功能: 鐵件製程明細)
  */
 async function showSupplyDetailModal(partName) {
     const modal = document.getElementById('supplyDetailModal');

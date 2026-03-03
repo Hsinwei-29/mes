@@ -4,7 +4,7 @@ from datetime import datetime
 import os
 
 # 全域快取（以 mtime 判斷是否需要重新讀取）
-PICKING_CACHE = {'mtime': 0, 'data': None}
+PICKING_CACHE = {'mtime': 0, 'data': None, 'raw_df': None}
 
 # 工單快取
 ORDERS_CACHE = {'mtime': 0, 'data': None}
@@ -38,7 +38,11 @@ def get_picking_data():
             return PICKING_CACHE['data']
 
         print(f"Loading Picking Data from {picking_file}...")
-        df = pd.read_excel(picking_file, usecols=[0, 1, 4, 5, 8])
+        # 讀取全欄位（shortage.py 需要 '需求數量 (EINHEIT)' 和 '領料數量 (EINHEIT)'）
+        raw_df = pd.read_excel(picking_file, engine='openpyxl')
+        # 建立 order.py 自用的精簡版
+        df = raw_df[[raw_df.columns[0], raw_df.columns[1],
+                     raw_df.columns[4], raw_df.columns[5], raw_df.columns[8]]].copy()
         df.columns = ['訂單', '物料', '未結數量', '物料說明', '需求日期']
 
         picking_map = {}
@@ -67,9 +71,10 @@ def get_picking_data():
             if pd.notna(need_date):
                 picking_map[order_id]['dates'].append(need_date)
 
-        # 更新快取
+        # 更新快取（同時保存 raw_df 供 shortage.py 重用）
         PICKING_CACHE['mtime'] = mtime
         PICKING_CACHE['data'] = picking_map
+        PICKING_CACHE['raw_df'] = raw_df
         return picking_map
     except Exception as e:
         print(f"Error loading picking data: {e}")

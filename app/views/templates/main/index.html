@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>庫存即時看板</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}?v=20260228_0005">
     <link rel="stylesheet" href="{{ url_for('static', filename='stock_buttons.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
@@ -65,7 +65,12 @@
 
             <!-- 庫存明細區 -->
             <section class="section inventory-details">
-                <h2 class="section-title" id="titleDetails">📝 機型庫存明細</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h2 class="section-title" id="titleDetails" style="margin-bottom: 0;">📝 機型庫存明細</h2>
+                    <a href="/api/export/inventory" class="export-btn" title="匯出完整庫存資料為 Excel">
+                        <span style="font-size: 1.1rem;">📊</span> 匯出 Excel
+                    </a>
+                </div>
                 <div class="details-table-wrapper">
                     <table class="details-table" id="detailsTable">
                         <thead>
@@ -112,7 +117,7 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='app.js') }}?v=20260204_2300"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v=20260303_0001"></script>
 </body>
 
 </html>
