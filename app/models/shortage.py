@@ -54,7 +54,11 @@ def get_workorder_picking_mapping(casting_inventory=None):
 
         workorder_map = {}
         for _, row in wo_df.iterrows():
-            wo_number = str(row['工單號碼']).strip() if pd.notna(row['工單號碼']) else None
+            # 工單號碼在 Excel 中以浮點數儲存（如 100000155.0），需先轉 int 再轉 str
+            try:
+                wo_number = str(int(float(row['工單號碼']))) if pd.notna(row['工單號碼']) else None
+            except (ValueError, TypeError):
+                wo_number = str(row['工單號碼']).strip() if pd.notna(row['工單號碼']) else None
             if not wo_number or wo_number in ['nan', 'N/A', '']:
                 continue
             special_note = str(row.get('特規備註', '')).strip() if pd.notna(row.get('特規備註', '')) else ''
@@ -84,7 +88,11 @@ def get_workorder_picking_mapping(casting_inventory=None):
 
         # ── 3. 比對 ───────────────────────────────────────────────────
         for _, row in raw_df.iterrows():
-            order_number = str(row['訂單']).strip() if pd.notna(row['訂單']) else None
+            # 撥料訂單號碼同樣可能是浮點數格式，統一轉 int 再轉 str
+            try:
+                order_number = str(int(float(row['訂單']))) if pd.notna(row['訂單']) else None
+            except (ValueError, TypeError):
+                order_number = str(row['訂單']).strip() if pd.notna(row['訂單']) else None
             part_number_full = str(row['物料']).strip() if pd.notna(row['物料']) else None
             part_desc = str(row['物料說明']).strip() if pd.notna(row['物料說明']) else ''
 
