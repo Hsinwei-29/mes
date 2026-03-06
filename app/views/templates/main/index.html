@@ -67,7 +67,9 @@
             <section class="section inventory-details">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                     <h2 class="section-title" id="titleDetails" style="margin-bottom: 0;">📝 機型庫存明細</h2>
-                    <a href="/api/export/inventory" class="export-btn" title="匯出完整庫存資料為 Excel">
+                    <a href="javascript:void(0)"
+                        onclick="window.location.href='/api/export/models_inventory?t=' + new Date().getTime()"
+                        class="export-btn" title="匯出機型庫存明細為 Excel">
                         <span style="font-size: 1.1rem;">📊</span> 匯出 Excel
                     </a>
                 </div>

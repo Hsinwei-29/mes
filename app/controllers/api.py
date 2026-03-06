@@ -427,106 +427,72 @@ def stock_out():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@api_bp.route('/export/inventory')
+@api_bp.route('/export/models_inventory')
 def export_inventory():
-    """匯出鑄件庫存明細為 Excel"""
+    """匯出機型庫存明細為 Excel（單一工作表）"""
     import io
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from flask import send_file
-    from ..models.inventory import SHEET_MAP, get_part_details
+    from ..models.inventory import load_casting_inventory
 
     try:
+        data = load_casting_inventory()
+        details = data.get('details', [])
+
         wb = openpyxl.Workbook()
-        wb.remove(wb.active)  # 移除預設空白頁
+        ws = wb.active
+        ws.title = '機型庫存明細'
 
-        # 每個零件類型一個工作表
-        for part_type in ['工作台', '底座', '橫樑', '立柱']:
-            data = get_part_details(part_type)
-            headers = data.get('headers', [])
-            rows = data.get('rows', [])
+        # 樣式
+        header_fill = PatternFill('solid', fgColor='4472C4')
+        header_font = Font(bold=True, color='FFFFFF', size=11)
+        center = Alignment(horizontal='center', vertical='center')
+        left   = Alignment(horizontal='left',   vertical='center')
+        thin   = Border(
+            left=Side(style='thin'), right=Side(style='thin'),
+            top=Side(style='thin'),  bottom=Side(style='thin')
+        )
 
-            ws = wb.create_sheet(title=part_type)
+        headers = ['機型', '工作台', '底座', '橫樑', '立柱']
 
-            # 表頭樣式
-            header_fill = PatternFill('solid', fgColor='4472C4')
-            header_font = Font(bold=True, color='FFFFFF', size=11)
-            center = Alignment(horizontal='center', vertical='center')
-            thin = Border(
-                left=Side(style='thin'), right=Side(style='thin'),
-                top=Side(style='thin'), bottom=Side(style='thin')
-            )
+        # 標頭列
+        for col_idx, h in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_idx, value=h)
+            cell.font      = header_font
+            cell.fill      = header_fill
+            cell.alignment = center
+            cell.border    = thin
 
-            # 寫入標頭
-            for col_idx, header in enumerate(headers, 1):
-                cell = ws.cell(row=1, column=col_idx, value=header)
-                cell.font = header_font
-                cell.fill = header_fill
-                cell.alignment = center
-                cell.border = thin
-
-            # 寫入資料
-            for row_idx, row in enumerate(rows, 2):
-                alt_fill = PatternFill('solid', fgColor='EEF2FF') if row_idx % 2 == 0 else None
-                for col_idx, header in enumerate(headers, 1):
-                    val = row.get(header, '')
-                    if val is None:
-                        val = 0
-                    cell = ws.cell(row=row_idx, column=col_idx, value=val)
-                    cell.alignment = center if col_idx > 2 else Alignment(horizontal='left', vertical='center')
-                    cell.border = thin
-                    if alt_fill:
-                        cell.fill = alt_fill
-                    # 最後一欄（總數）加粗
-                    if col_idx == len(headers):
-                        cell.font = Font(bold=True, color='1E40AF')
-
-            # 自動欄寬
-            for col in ws.columns:
-                max_len = max((len(str(c.value or '')) for c in col), default=8)
-                ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 30)
-
-            # 凍結首列
-            ws.freeze_panes = 'A2'
-
-        # 加一個「缺料分析」工作表
-        from ..models.shortage import calculate_shortage
-        shortage_list = calculate_shortage()
-        ws_s = wb.create_sheet(title='缺料分析')
-
-        s_headers = ['工單號碼', '客戶名稱', '生產結束', '品號', '物料說明', '零件類型',
-                     '需求數量', '已領料', '目前缺料', '現有庫存', '現有在製品', '現有素材', '缺料數量', '狀態']
-        header_fill2 = PatternFill('solid', fgColor='C00000')
-
-        for col_idx, h in enumerate(s_headers, 1):
-            cell = ws_s.cell(row=1, column=col_idx, value=h)
-            cell.font = Font(bold=True, color='FFFFFF', size=11)
-            cell.fill = header_fill2
-            cell.alignment = Alignment(horizontal='center', vertical='center')
-            cell.border = thin
-
-        for row_idx, item in enumerate(shortage_list, 2):
-            vals = [item.get(h, '') for h in s_headers]
-            alt_fill = PatternFill('solid', fgColor='FFF0F0') if item.get('缺料數量', 0) > 0 else (
-                PatternFill('solid', fgColor='F0FFF0') if row_idx % 2 == 0 else None)
+        # 資料列
+        for row_idx, item in enumerate(details, 2):
+            alt_fill = PatternFill('solid', fgColor='EEF2FF') if row_idx % 2 == 0 else None
+            vals = [
+                item.get('機型', ''),
+                item.get('工作台', 0),
+                item.get('底座',   0),
+                item.get('橫樑',   0),
+                item.get('立柱',   0),
+            ]
             for col_idx, val in enumerate(vals, 1):
-                cell = ws_s.cell(row=row_idx, column=col_idx, value=val if val is not None else '')
-                cell.border = thin
-                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell = ws.cell(row=row_idx, column=col_idx, value=val if val is not None else 0)
+                cell.alignment = left if col_idx == 1 else center
+                cell.border    = thin
                 if alt_fill:
-                    cell.fill = alt_fill
+                    cell.fill  = alt_fill
 
-        for col in ws_s.columns:
+        # 自動欄寬
+        for col in ws.columns:
             max_len = max((len(str(c.value or '')) for c in col), default=8)
-            ws_s.column_dimensions[col[0].column_letter].width = min(max_len + 4, 40)
-        ws_s.freeze_panes = 'A2'
+            ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 30)
 
-        # 輸出
+        ws.freeze_panes = 'A2'
+
         output = io.BytesIO()
         wb.save(output)
         output.seek(0)
 
-        filename = f"鑄件庫存_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+        filename = f"機型庫存明細_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
         return send_file(
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
