@@ -9,6 +9,7 @@ let currentLang = 'zh'; // 預設語言
 let allOrders = [];  // 儲存所有工單資料
 let currentFactory = 'all';  // 當前選中的工廠
 let allShortageMap = {}; // 儲存缺料狀態 {OrderNo: [PartTypes]}
+let tableFilterMode = 'shortage'; // 'shortage', 'active', 'all'
 
 // 翻譯字典
 const TRANSLATIONS = {
@@ -415,7 +416,11 @@ function updateOrderStats(orders) {
     const today = new Date();
     const inProgress = orders.filter(o => {
         const endDate = o.生產結束 ? new Date(o.生產結束) : null;
-        return !endDate || endDate >= today;
+        if (endDate && endDate < today) return false;
+
+        // 僅計算目前有缺料的機號
+        const shortageParts = allShortageMap[o.工單] || [];
+        return shortageParts.length > 0;
     }).length;
     const completed = orders.length - inProgress;
 
@@ -599,28 +604,35 @@ function renderOrdersStats(stats) {
     }
 
     container.innerHTML = `
-        <div class="stat-card total">
+        <div class="stat-card total ${tableFilterMode === 'all' ? 'active' : ''}" 
+             onclick="setTableFilter('all')" 
+             style="cursor: pointer; transition: all 0.2s; border: 2px solid ${tableFilterMode === 'all' ? '#2563eb' : 'transparent'};">
             <div class="stat-icon">📊</div>
             <div class="stat-content">
                 <div class="stat-title">${t('ORDER_TOTAL')}</div>
                 <div class="stat-number">${stats.total || 0}</div>
             </div>
         </div>
-        <div class="stat-card progress">
+        <div class="stat-card progress ${tableFilterMode === 'shortage' ? 'active' : ''}" 
+             onclick="setTableFilter('shortage')" 
+             style="cursor: pointer; transition: all 0.2s; border: 2px solid ${tableFilterMode === 'shortage' ? '#2563eb' : 'transparent'};">
             <div class="stat-icon">🔄</div>
             <div class="stat-content">
-                <div class="stat-title">${t('ORDER_IN_PROGRESS')}</div>
+                <div class="stat-title">${t('ORDER_IN_PROGRESS')} (急)</div>
                 <div class="stat-number">${stats.in_progress || 0}</div>
             </div>
         </div>
-        <div class="stat-card completed">
-            <div class="stat-icon">✅</div>
-            <div class="stat-content">
-                <div class="stat-title">${t('ORDER_COMPLETED')}</div>
-                <div class="stat-number">${stats.completed || 0}</div>
-            </div>
-        </div>
     `;
+}
+
+/**
+ * 設置表格篩選模式
+ */
+function setTableFilter(mode) {
+    tableFilterMode = mode;
+    const filteredOrders = filterOrdersByFactory(currentFactory);
+    renderOrdersTable(filteredOrders);
+    updateOrderStats(filteredOrders); // 重新渲染統計以更新 active 狀態
 }
 
 /**
@@ -637,11 +649,38 @@ function renderOrdersTable(orders) {
 
     const today = new Date();
 
-    tbody.innerHTML = orders.map(order => {
+    // 根據 tableFilterMode 進行過濾
+    const filtered = orders.filter(order => {
+        if (tableFilterMode === 'all') return true;
+
         const endDate = order.生產結束 ? new Date(order.生產結束) : null;
-        const isComplete = endDate && endDate < today;
-        const statusClass = isComplete ? 'complete' : 'active';
-        const statusText = isComplete ? t('ORDER_STATUS_COMPLETE') : t('ORDER_STATUS_ACTIVE');
+        const isActive = !(endDate && endDate < today);
+
+        if (tableFilterMode === 'active') return isActive;
+
+        if (tableFilterMode === 'shortage') {
+            if (!isActive) return false;
+            const shortageParts = allShortageMap[order.工單] || [];
+            return shortageParts.length > 0;
+        }
+
+        return true;
+    }).sort((a, b) => {
+        const dateA = a.生產開始 ? new Date(a.生產開始).getTime() : 0;
+        const dateB = b.生產開始 ? new Date(b.生產開始).getTime() : 0;
+        return dateA - dateB;
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="12" class="loading">${t('NO_ORDERS')}</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(order => {
+        const endDate = order.生產結束 ? new Date(order.生產結束) : null;
+        const isCompleted = endDate && endDate < today;
+        const statusClass = isCompleted ? 'completed' : 'active';
+        const statusText = isCompleted ? t('ORDER_STATUS_COMPLETE') : t('ORDER_STATUS_ACTIVE');
 
         // 檢查缺料狀態 helper
         const getDisplayValue = (partName, demandValue) => {
@@ -665,6 +704,7 @@ function renderOrdersTable(orders) {
                 <td>${getDisplayValue('底座', order.需求_底座)}</td>
                 <td>${getDisplayValue('橫樑', order.需求_橫樑)}</td>
                 <td>${getDisplayValue('立柱', order.需求_立柱)}</td>
+                <td title="${order.特規備註 || ''}">${truncateText(order.特規備註, 10)}</td>
                 <td><span class="status-tag ${statusClass}">${statusText}</span></td>
             </tr>
         `;

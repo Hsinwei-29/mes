@@ -123,6 +123,7 @@ def load_orders():
             col_desc = '品號說明' if '品號說明' in df.columns else None  # 直接指定
             col_start = '生產開始' if '生產開始' in df.columns else None  # 直接指定
             col_end = '生產結束' if '生產結束' in df.columns else None  # 直接指定
+            col_note = '特規備註' if '特規備註' in df.columns else None  # 直接指定
             col_elec = '電控外包' if '電控外包' in df.columns else None  # 工廠分類用
             col_paint = '噴漆外包' if '噴漆外包' in df.columns else None  # 工廠分類用
             
@@ -210,6 +211,7 @@ def load_orders():
                         '生產開始': safe_date_str(row.get(col_start)) if col_start else "",
                         '生產結束': safe_date_str(row.get(col_end)) if col_end else "",
                         '需求日期': need_date_display,
+                        '特規備註': str(row.get(col_note)).strip() if col_note and pd.notna(row.get(col_note)) else "",
                         '需求_底座': needs['底座'],
                         '需求_工作台': needs['工作台'],
                         '需求_橫樑': needs['橫樑'],

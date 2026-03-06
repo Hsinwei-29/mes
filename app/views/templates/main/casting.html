@@ -220,6 +220,24 @@
             opacity: 0.85;
         }
 
+        /* 分配按鈕樣式 */
+        .allocation-btn {
+            padding: 0.4rem 0.8rem;
+            background: #8b5cf6;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: opacity 0.2s;
+            margin-left: 0.5rem;
+        }
+
+        .allocation-btn:hover {
+            opacity: 0.85;
+        }
+
         /* 履歷彈出視窗 */
         .history-modal {
             display: none;
@@ -516,8 +534,8 @@
                         {% for header in headers %}
                         <th class="{{ 'highlight-final' if loop.last else '' }}">{{ header }}</th>
                         {% endfor %}
-                        <th>操作</th>
-                        <th>履歷</th>
+                        <th>儲存</th>
+                        <th>查詢</th>
                     </tr>
                 </thead>
                 <tbody id="editTableBody">
@@ -546,9 +564,11 @@
                             <button class="save-btn" disabled style="opacity: 0.3; cursor: not-allowed;">儲存</button>
                             {% endif %}
                         </td>
-                        <td>
-                            <button class="history-btn" onclick="showHistory('{{ row['品號'] }}', '{{ row['機型'] }}')">📋
-                                履歷</button>
+                        <td style="white-space: nowrap;">
+                            <button class="history-btn" onclick="showHistory('{{ row['品號'] }}', '{{ row['機型'] }}')"
+                                title="查看修改歷程">📋 履歷</button>
+                            <button class="allocation-btn" onclick="showAllocation('{{ row['品號'] }}')"
+                                title="查看工單需求分配">📊 分配</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -574,6 +594,40 @@
                 <div class="history-modal-body">
                     <div id="historyTimeline" class="timeline">
                         <!-- 動態載入時間軸 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 需求分配彈出視窗 -->
+        <div id="allocationModal" class="history-modal" style="z-index: 1001;">
+            <div class="history-modal-content" style="max-width: 900px;">
+                <div class="history-modal-header">
+                    <h2 id="allocationModalTitle">📊 工單需求與配賦情況</h2>
+                    <button class="history-modal-close" onclick="closeAllocationModal()">&times;</button>
+                </div>
+                <div class="history-modal-body">
+                    <div id="allocationSummary"
+                        style="margin-bottom: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+                        <!-- 由 JS 動態填充摘要 -->
+                    </div>
+                    <div id="allocationTableContainer">
+                        <table class="edit-table" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>工單號碼</th>
+                                    <th>客戶</th>
+                                    <th>需求量</th>
+                                    <th>待領</th>
+                                    <th>分配數</th>
+                                    <th>生產開始</th>
+                                    <th>狀態</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allocationTableBody">
+                                <!-- 由 JS 動態填充 -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -659,9 +713,17 @@
                         </div>
                         <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">工單號碼：</label>
-                            <input type="text" id="stockOutWorkOrder" required
+                            <select id="stockOutWorkOrder" required
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;">
+                                <option value="">載入中...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">採購編號
+                                (選填)：</label>
+                            <input type="text" id="stockOutPurchaseOrder"
                                 style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
-                                placeholder="請輸入工單號碼">
+                                placeholder="請輸入採購編號">
                         </div>
                         <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">數量：</label>
@@ -881,6 +943,80 @@
                 }
             });
 
+        // --- 需求分配相關函式 ---
+        function showAllocation(itemId) {
+            const modal = document.getElementById('allocationModal');
+            const title = document.getElementById('allocationModalTitle');
+            const summaryDiv = document.getElementById('allocationSummary');
+            const tableBody = document.getElementById('allocationTableBody');
+
+            modal.style.display = 'block';
+            tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">載入中...</td></tr>';
+            summaryDiv.innerHTML = '';
+
+            fetch(`/api/inventory/allocation/${itemId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        tableBody.innerHTML = `<tr><td colspan="7" style="color: red; text-align: center; padding: 2rem;">錯誤: ${data.error}</td></tr>`;
+                        return;
+                    }
+
+                    title.innerHTML = `📊 ${data.part_desc || itemId} - 工單需求與配賦情況`;
+
+                    // 填充摘要
+                    summaryDiv.innerHTML = `
+                            <div style="background: #f3f4f6; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.8rem; color: #666;">現有庫存</div>
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #8b5cf6;">${data.summary.stock}</div>
+                            </div>
+                            <div style="background: #f3f4f6; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.8rem; color: #666;">總需求量</div>
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #333;">${data.summary.total_demand}</div>
+                            </div>
+                            <div style="background: #fef2f2; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.8rem; color: #666;">待領總數</div>
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #ef4444;">${data.summary.total_pending}</div>
+                            </div>
+                            <div style="background: #ecfdf5; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.8rem; color: #666;">分配後剩餘</div>
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;">${data.summary.remaining_stock}</div>
+                            </div>
+                        `;
+
+                    // 填充表格
+                    if (data.allocation.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">目前無相關工單需求</td></tr>';
+                    } else {
+                        tableBody.innerHTML = data.allocation.map(item => {
+                            let statusColor = '#999';
+                            if (item.分配狀態 === '完全分配') statusColor = '#10b981';
+                            else if (item.分配狀態 === '部分分配') statusColor = '#fbbf24';
+                            else if (item.分配狀態 === '未分配') statusColor = '#ef4444';
+
+                            return `
+                                    <tr>
+                                        <td style="font-weight: bold;">${item.工單號碼}</td>
+                                        <td>${item.客戶名稱}</td>
+                                        <td>${item.需求數量}</td>
+                                        <td>${item.待領數量}</td>
+                                        <td style="font-weight: bold; color: #8b5cf6;">${item.分配數量}</td>
+                                        <td>${item.生產開始 || '-'}</td>
+                                        <td><span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">${item.分配狀態}</span></td>
+                                    </tr>
+                                `;
+                        }).join('');
+                    }
+                })
+                .catch(err => {
+                    tableBody.innerHTML = `<tr><td colspan="7" style="color: red; text-align: center; padding: 2rem;">載入失敗: ${err.message}</td></tr>`;
+                });
+        }
+
+        function closeAllocationModal() {
+            document.getElementById('allocationModal').style.display = 'none';
+        }
+
         // 顯示履歷彈出視窗
         function showHistory(itemId, modelName) {
             const modal = document.getElementById('historyModal');
@@ -1099,6 +1235,34 @@
             // 填充機型選項
             modelSelect.innerHTML = '<option value="">請選擇機型</option>' +
                 models.map(m => `<option value="${m.partNo}">${m.display}</option>`).join('');
+
+            // 載入工單選項 (過濾已完成)
+            const woSelect = document.getElementById('stockOutWorkOrder');
+            woSelect.innerHTML = '<option value="">載入中...</option>';
+            fetch('/api/orders')
+                .then(res => res.json())
+                .then(data => {
+                    const orders = data.orders || [];
+                    const today = new Date();
+                    const activeOrders = orders.filter(o => {
+                        const endDate = o.生產結束 ? new Date(o.生產結束) : null;
+                        return !(endDate && endDate < today);
+                    }).sort((a, b) => {
+                        const dateA = a.生產開始 ? new Date(a.生產開始).getTime() : 0;
+                        const dateB = b.生產開始 ? new Date(b.生產開始).getTime() : 0;
+                        return dateA - dateB;
+                    });
+
+                    woSelect.innerHTML = '<option value="">請選擇工單號碼</option>' +
+                        activeOrders.map(o => {
+                            const desc = o.品號說明 ? o.品號說明.substring(0, 15) : '';
+                            return `<option value="${o.工單}">${o.工單} ${desc ? ' - ' + desc : ''}</option>`;
+                        }).join('');
+                })
+                .catch(err => {
+                    woSelect.innerHTML = '<option value="">載入失敗</option>';
+                    console.error('Error loading orders:', err);
+                });
         }
 
         function closeStockOutModal() {
@@ -1113,10 +1277,11 @@
 
             const model = document.getElementById('stockOutModel').value;
             const workOrder = document.getElementById('stockOutWorkOrder').value;
+            const purchaseOrder = document.getElementById('stockOutPurchaseOrder').value;
             const quantity = parseInt(document.getElementById('stockOutQuantity').value);
 
             if (!model || !workOrder || !quantity) {
-                alert('請填寫所有欄位！');
+                alert('請填寫所有必要欄位（機型、工單號碼、數量）！');
                 return;
             }
 
@@ -1127,6 +1292,7 @@
                     part_name: partName,
                     model: model,
                     work_order: workOrder.trim(),
+                    purchase_order: purchaseOrder ? purchaseOrder.trim() : '',
                     quantity: quantity
                 })
             })
@@ -1150,6 +1316,52 @@
             if (e.target === this) {
                 closeStockOutModal();
             }
+        });
+        // 標記有進行中工單的機型
+        document.addEventListener('DOMContentLoaded', function () {
+            fetch('/api/orders')
+                .then(res => res.json())
+                .then(data => {
+                    const orders = data.orders || [];
+                    const today = new Date();
+
+                    // 取得所有 active 狀態的工單
+                    const activeOrders = orders.filter(o => {
+                        const endDate = o.生產結束 ? new Date(o.生產結束) : null;
+                        return !(endDate && endDate < today);
+                    });
+
+                    if (activeOrders.length === 0) return;
+
+                    // 收集所有進行中工單的「品號說明」
+                    const activeDescs = activeOrders
+                        .map(o => (o.品號說明 || '').trim().toLowerCase())
+                        .filter(d => d.length > 0);
+
+                    const rows = document.querySelectorAll('#editTableBody tr');
+                    rows.forEach(row => {
+                        const modelCell = row.cells[1]; // 機型欄位通常為第2欄
+
+                        if (modelCell && modelCell.classList.contains('model-col')) {
+                            const modelText = modelCell.textContent.trim().toLowerCase();
+
+                            if (!modelText) return;
+
+                            // 檢查鑄件的「機型」是否包含在工單的「品號說明」中，或反之
+                            const hasOrder = activeDescs.some(desc => desc.includes(modelText) || modelText.includes(desc));
+
+                            if (hasOrder) {
+                                // 將該儲存格加上顯眼樣式
+                                modelCell.style.color = '#1d4ed8'; // 深藍色
+                                modelCell.style.fontWeight = 'bold';
+                                modelCell.style.backgroundColor = '#dbeafe'; // 淺藍色背景
+                                modelCell.title = "此機型目前有進行中的工單";
+                                modelCell.innerHTML = `<span style="margin-right:4px;" title="有進行中的工單">🔥</span>${modelCell.textContent.trim()}`;
+                            }
+                        }
+                    });
+                })
+                .catch(err => console.error('Error fetching active orders:', err));
         });
     </script>
 </body>

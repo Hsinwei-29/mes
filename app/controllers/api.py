@@ -277,6 +277,13 @@ def api_history_stats(part_type):
     stats = get_history_stats(part_type)
     return jsonify(stats)
 
+@api_bp.route('/inventory/allocation/<part_number>')
+def api_part_allocation(part_number):
+    """取得特定品號的分配狀況"""
+    from ..models.shortage import get_part_allocation
+    data = get_part_allocation(part_number)
+    return jsonify(data)
+
 @api_bp.route('/shortage')
 def api_shortage():
     """缺料分析 API"""
@@ -408,13 +415,14 @@ def stock_out():
         work_order = data.get('work_order')
         quantity = data.get('quantity')
         model = data.get('model')
+        purchase_order = data.get('purchase_order')
         
         if not part_name or not work_order or not quantity:
             return jsonify({'success': False, 'error': '缺少必要參數'}), 400
         
         # 調用 inventory.py 中的出庫函數
         from ..models.inventory import stock_out_product
-        result = stock_out_product(part_name, work_order, quantity, model)
+        result = stock_out_product(part_name, work_order, quantity, model, purchase_order)
         
         if result['success']:
             # 通知所有客戶端更新數據

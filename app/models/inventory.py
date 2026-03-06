@@ -668,7 +668,7 @@ def stock_in_material(part_name, quantity, model=None, supplier=None, user=None,
         return {'success': False, 'error': str(e)}
 
 
-def stock_out_product(part_name, work_order, quantity, model=None):
+def stock_out_product(part_name, work_order, quantity, model=None, purchase_order=None):
     """
     出庫操作 - 扣除成品數量
     """
@@ -791,7 +791,10 @@ def stock_out_product(part_name, work_order, quantity, model=None):
         # 如果是邏輯A (有log_data)，我們記錄精確值
         if log_data:
             user_id = session.get('user', 'System')
-            field_name = f'{product_label} (出庫: 工單 {work_order})'
+            field_name = f'{product_label} (出庫: 工單 {work_order}'
+            if purchase_order:
+                field_name += f', 採購單 {purchase_order}'
+            field_name += ')'
             try:
                 log_edit(part_name, log_data['item_id'], field_name, 
                          log_data['old_value'], log_data['new_value'], user_id)
@@ -805,6 +808,7 @@ def stock_out_product(part_name, work_order, quantity, model=None):
             'success': True,
             'message': f'{part_name} 出庫成功，工單 {work_order}，已扣除 {quantity} 件成品',
             'work_order': work_order,
+            'purchase_order': purchase_order,
             'quantity': quantity
         }
         

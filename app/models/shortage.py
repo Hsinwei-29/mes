@@ -167,13 +167,27 @@ def get_casting_inventory():
                 stock_val = row.get(fin_key, 0) or 0
                 semi_val = sum(row.get(k, 0) or 0 for k in semi_key_list)
                 material_val = row.get('素材', 0) or 0  # 素材單獨記錄
-                inventory[part_number] = {
-                    '機型': row.get('機型', ''),
-                    '零件類型': part_type,
-                    '庫存': int(stock_val),
-                    '在製品': int(semi_val),
-                    '素材': int(material_val)
-                }
+                stock_val = int(row.get(fin_key, 0) or 0)
+                semi_val = int(sum(row.get(k, 0) or 0 for k in semi_key_list))
+                material_val = int(row.get('素材', 0) or 0)
+                
+                if part_number in inventory:
+                    inventory[part_number]['庫存'] += stock_val
+                    inventory[part_number]['在製品'] += semi_val
+                    inventory[part_number]['素材'] += material_val
+                    # 如果機型不同，可以併列
+                    existing_model = inventory[part_number]['機型']
+                    current_model = row.get('機型', '')
+                    if current_model and current_model != existing_model and current_model not in existing_model:
+                        inventory[part_number]['機型'] = f"{existing_model}, {current_model}"
+                else:
+                    inventory[part_number] = {
+                        '機型': row.get('機型', ''),
+                        '零件類型': part_type,
+                        '庫存': stock_val,
+                        '在製品': semi_val,
+                        '素材': material_val
+                    }
 
         return inventory
     except Exception as e:
@@ -269,6 +283,22 @@ def calculate_shortage():
                 
                 # 記錄所有有需求的項目
                 if demand_qty > 0:
+                    # 檢查是否有「手動排除」關鍵字（例如：工作台已給、工作台OK）
+                    is_manually_cleared = False
+                    if special_note:
+                        note_upper = str(special_note).upper()
+                        keywords = ["已給", "OK", "已領", "不必", "跳過", "免領"]
+                        if any((part_type in note_upper and kw in note_upper) for kw in keywords) or \
+                           any((f"{part_type}{kw}" in note_upper) for kw in keywords):
+                            is_manually_cleared = True
+                    
+                    if is_manually_cleared:
+                        final_shortage = 0
+                        current_shortage = 0
+                        status = '已領足'
+                    else:
+                        status = '已領足' if picked_qty >= demand_qty else ('庫存足' if final_shortage <= 0 else '缺料')
+
                     shortage_list.append({
                         '工單號碼': wo_number,
                         '工單編碼': work_order_code,
@@ -286,18 +316,16 @@ def calculate_shortage():
                         '現有素材': current_material,  # 素材數量，用於判斷是否為嚴重缺料
                         '缺料數量': final_shortage if final_shortage > 0 else 0,
                         '特規備註': special_note,
-                        '狀態': '已領足' if picked_qty >= demand_qty else ('庫存足' if final_shortage <= 0 else '缺料')
+                        '狀態': status
                     })
         
         # 按生產開始日期升序（最早優先）、缺料數量降序、工單號碼升序排序
         # 注意：有些生產開始可能是 NaT/None，需要處理
         def sort_key(x):
             date_val = x['生產開始']
-            # 如果日期是 None 或 NaT，排在最後面 (或最前面，視需求而定，這裡假設有日期的優先)
-            # 為了讓有日期的排前面並按時間排序，我們給 None 一個很大的日期
-            if pd.isna(date_val):
-                date_val = pd.Timestamp.max
-            
+            # 確保日期空值排在最後
+            if not date_val or pd.isna(date_val): 
+                date_val = "9999-12-31"
             return (date_val, -x['缺料數量'], x['工單號碼'])
 
         shortage_list.sort(key=sort_key)
@@ -316,3 +344,85 @@ def calculate_shortage():
         import traceback
         traceback.print_exc()
         return []
+
+def get_part_allocation(part_number):
+    """
+    計算特定品號的分配狀況
+    依生產開始日期排序，計算現有庫存分配給哪些工單
+    """
+    try:
+        # 取得所有缺料分析資料
+        shortage_list = calculate_shortage()
+        
+        # 篩選出該品號的所有需求
+        # 優先取得該品號的實際庫存（不論是否有需求）
+        inventory = get_casting_inventory()
+        current_stock = 0
+        part_desc = part_number
+        if part_number in inventory:
+            current_stock = inventory[part_number]['庫存']
+            part_desc = inventory[part_number].get('機型', part_number)
+
+        # 篩選出該品號的所有需求
+        part_demands = [x for x in shortage_list if x['品號'] == part_number]
+        
+        if not part_demands:
+            return {
+                'part_number': part_number, 
+                'part_desc': part_desc,
+                'allocation': [], 
+                'summary': {
+                    'stock': current_stock, 
+                    'total_demand': 0,
+                    'total_pending': 0,
+                    'remaining_stock': current_stock
+                }
+            }
+            
+        remaining_stock = current_stock
+        
+        allocation_results = []
+        for demand in part_demands:
+            req_qty = demand['需求數量'] - demand['已領料']
+            if req_qty <= 0:
+                is_allocated = True
+                alloc_qty = 0
+            else:
+                if remaining_stock >= req_qty:
+                    is_allocated = True
+                    alloc_qty = req_qty
+                    remaining_stock -= req_qty
+                elif remaining_stock > 0:
+                    is_allocated = False
+                    alloc_qty = remaining_stock
+                    remaining_stock = 0
+                else:
+                    is_allocated = False
+                    alloc_qty = 0
+            
+            allocation_results.append({
+                '工單號碼': demand['工單號碼'],
+                '客戶名稱': demand['客戶名稱'],
+                '生產開始': demand['生產開始'],
+                '需求數量': demand['需求數量'],
+                '已領料': demand['已領料'],
+                '待領數量': req_qty,
+                '分配數量': alloc_qty,
+                '分配狀態': '完全分配' if is_allocated else ('部分分配' if alloc_qty > 0 else '未分配'),
+                '備註': demand.get('特規備註', '')
+            })
+            
+        return {
+            'part_number': part_number,
+            'part_desc': part_demands[0]['物料說明'],
+            'allocation': allocation_results,
+            'summary': {
+                'stock': current_stock,
+                'total_demand': sum(d['需求數量'] for d in part_demands),
+                'total_pending': sum(max(0, d['需求數量'] - d['已領料']) for d in part_demands),
+                'remaining_stock': remaining_stock
+            }
+        }
+    except Exception as e:
+        print(f"Error in get_part_allocation: {e}")
+        return {'error': str(e)}
