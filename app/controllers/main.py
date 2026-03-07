@@ -121,6 +121,12 @@ def model_search_page():
     """機型搜尋頁面"""
     return render_template('main/model_search.html')
 
+@main_bp.route('/lifting')
+def lifting_page():
+    """吊具管理頁面"""
+    is_logged_in = current_user.is_authenticated
+    return render_template('main/lifting.html', is_logged_in=is_logged_in)
+
 @main_bp.route('/test-api')
 def test_api_page():
     """API 測試頁面"""

@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from datetime import datetime
 from ..models.inventory import load_casting_inventory, get_part_details, update_cell, get_edit_history, get_zero_inventory_models
 from ..models.order import load_orders
+from ..models.lifting import load_lifting_inventory, update_lifting_status
 from .. import socketio
 
 api_bp = Blueprint('api', __name__)
@@ -511,3 +512,29 @@ def export_inventory():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@api_bp.route('/lifting', methods=['GET'])
+def api_lifting():
+    data = load_lifting_inventory()
+    return jsonify({
+        'success': True,
+        'data': data
+    })
+
+@api_bp.route('/lifting/status', methods=['POST'])
+@login_required
+def api_update_lifting():
+    req = request.json
+    category = req.get('category')
+    item_id = req.get('id')
+    action = req.get('action') # 'borrow' or 'return'
+    user_name = current_user.username
+    
+    if not all([category, item_id, action]):
+        return jsonify({'success': False, 'error': 'Missing parameters'})
+        
+    success, msg = update_lifting_status(category, item_id, action, user_name)
+    if success:
+        return jsonify({'success': True, 'msg': msg})
+    else:
+        return jsonify({'success': False, 'error': msg})

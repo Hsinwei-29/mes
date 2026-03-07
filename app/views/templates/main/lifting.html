@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>吊具管理 - 協鴻工業</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            background: transparent;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: var(--accent-blue);
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .tab-btn.active {
+            color: var(--accent-blue);
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-borrow {
+            background-color: #2563eb;
+            color: white;
+        }
+
+        .btn-borrow:hover {
+            background-color: #1d4ed8;
+        }
+
+        .btn-return {
+            background-color: #10b981;
+            color: white;
+        }
+
+        .btn-return:hover {
+            background-color: #059669;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-in {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: #059669;
+        }
+
+        .status-out {
+            background-color: rgba(245, 158, 11, 0.2);
+            color: #d97706;
+        }
+
+        .scan-container {
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: var(--bg-card);
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .scan-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            font-size: 1.1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            transition: border-color 0.2s;
+        }
+
+        .scan-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard">
+        <!-- 頂部標題列 -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo-area">
+                    <img src="{{ url_for('static', filename='logo.jpg') }}" alt="協鴻" class="company-logo"
+                        onerror="this.style.display='none'">
+                </div>
+                <h1>協鴻工業 吊具管理系統</h1>
+                <nav class="main-nav">
+                    <a href="{{ url_for('main.index') }}" class="nav-link">庫存看板</a>
+                    <a href="{{ url_for('main.orders_page') }}" class="nav-link">工單需求</a>
+                    <a href="{{ url_for('main.shortage_page') }}" class="nav-link">缺料分析</a>
+                    <a href="{{ url_for('main.lifting_page') }}" class="nav-link active">吊具管理</a>
+                </nav>
+            </div>
+            <div class="header-right">
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('auth.profile') }}" class="lang-btn">⚙️ 個人資料</a>
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('auth.admin_dashboard') }}" class="lang-btn" style="margin-left: 0.5rem;">👤 管理員</a>
+                {% endif %}
+                <a href="{{ url_for('auth.logout') }}" class="lang-btn" style="margin-left: 0.5rem;">登出</a>
+                {% else %}
+                <a href="{{ url_for('auth.login') }}" class="lang-btn">登入</a>
+                {% endif %}
+                <div class="update-info">
+                    <span class="status-dot"></span>
+                    <span id="lastUpdate">載入中...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主要內容區 -->
+        <main class="main-content">
+            <section class="section">
+                <h2 class="section-title">🏗️ 吊具借用與歸還管理</h2>
+
+                <div class="scan-container">
+                    <span style="font-size: 1.5rem;">📷</span>
+                    <input type="text" id="barcodeInput" class="scan-input" placeholder="請在此掃描吊具編號條碼，或手動輸入後按 Enter..."
+                        autofocus>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('吊具')">吊具</button>
+                    <button class="tab-btn" onclick="switchTab('吊鍊')">吊鍊</button>
+                    <button class="tab-btn" onclick="switchTab('布帶')">布帶</button>
+                </div>
+
+                <div class="details-table-wrapper">
+                    <table class="details-table">
+                        <thead>
+                            <tr>
+                                <th>編號</th>
+                                <th>規格/重量/長度</th>
+                                <th>放置位置</th>
+                                <th>目前狀態</th>
+                                <th>借用人</th>
+                                <th>借用日期</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="liftingTableBody">
+                            <tr>
+                                <td colspan="7" class="loading">載入中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        let currentTab = '吊具';
+        let liftingData = {};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLiftingData();
+
+            const barcodeInput = document.getElementById('barcodeInput');
+            if (barcodeInput) {
+                barcodeInput.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        const barcode = this.value.trim();
+                        if (barcode) {
+                            handleBarcodeScan(barcode);
+                        }
+                    }
+                });
+
+                // 點擊空白處時保持輸入框焦點 (選擇性防呆)
+                document.addEventListener('click', (e) => {
+                    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A') {
+                        barcodeInput.focus();
+                    }
+                });
+            }
+        });
+
+        async function handleBarcodeScan(barcode) {
+            let foundItem = null;
+            let foundCategory = null;
+
+            // 尋找對應的吊具紀錄
+            for (const [category, items] of Object.entries(liftingData)) {
+                const item = items.find(i => String(i.id).toUpperCase() === String(barcode).toUpperCase());
+                if (item) {
+                    foundItem = item;
+                    foundCategory = category;
+                    break;
+                }
+            }
+
+            if (!foundItem) {
+                alert(`查無此吊具編號：[${barcode}]`);
+                document.getElementById('barcodeInput').value = '';
+                return;
+            }
+
+            // 判斷借出還是歸還
+            const isBorrowed = foundItem.status === '借用中' || foundItem.borrower !== '';
+            const action = isBorrowed ? 'return' : 'borrow';
+            const actionText = action === 'borrow' ? '領用' : '歸還';
+
+            if (confirm(`掃描到 [${foundItem.id}] (${foundCategory})，\n目前狀態為「${isBorrowed ? '借用中' : '在庫'}」。\n\n確定要進行「${actionText}」操作嗎？`)) {
+                await updateStatus(foundCategory, foundItem.id, action, true);
+            }
+
+            const input = document.getElementById('barcodeInput');
+            input.value = '';
+            input.focus();
+        }
+
+        async function loadLiftingData() {
+            try {
+                const response = await fetch('/api/lifting?_t=' + new Date().getTime());
+                const result = await response.json();
+                if (result.success) {
+                    liftingData = result.data;
+                    renderTable();
+
+                    const now = new Date();
+                    document.getElementById('lastUpdate').textContent = '最後更新: ' + now.toLocaleTimeString();
+                } else {
+                    document.getElementById('liftingTableBody').innerHTML = `<tr><td colspan="7" class="loading">載入失敗: ${result.error}</td></tr>`;
+                }
+            } catch (error) {
+                console.error('載入吊具資料失敗:', error);
+                document.getElementById('liftingTableBody').innerHTML = `<tr><td colspan="7" class="loading">載入失敗，請檢查網路連線</td></tr>`;
+            }
+        }
+
+        function switchTab(tabName) {
+            currentTab = tabName;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent === tabName);
+            });
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('liftingTableBody');
+            const items = liftingData[currentTab] || [];
+
+            if (items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #666; padding: 2rem;">此分類尚無資料</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = items.map(item => {
+                const isBorrowed = item.status === '借用中' || item.borrower !== '';
+                const statusClass = isBorrowed ? 'status-out' : 'status-in';
+                const statusText = isBorrowed ? '借用中' : '在庫';
+
+                let actionBtn = '';
+                if (isBorrowed) {
+                    actionBtn = `<button class="action-btn btn-return" onclick="updateStatus('${currentTab}', '${item.id}', 'return')">歸還</button>`;
+                } else {
+                    actionBtn = `<button class="action-btn btn-borrow" onclick="updateStatus('${currentTab}', '${item.id}', 'borrow')">領用</button>`;
+                }
+
+                return `
+                    <tr>
+                        <td style="font-weight: bold;">${item.id}</td>
+                        <td>${item.spec}</td>
+                        <td>${item.location}</td>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td>${item.borrower || '-'}</td>
+                        <td>${item.borrow_date || '-'}</td>
+                        <td>${actionBtn}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function updateStatus(category, id, action, skipConfirm = false) {
+            const isLoggedIn = {% if is_logged_in %} true{% else %} false{% endif %};
+        if (!isLoggedIn) {
+            alert('請先登入才能進行領用/歸還操作！');
+            return;
+        }
+
+        const actionText = action === 'borrow' ? '領用' : '歸還';
+
+        if (!skipConfirm) {
+            if (!confirm(`確定要${actionText}吊具 [${id}] 嗎？`)) {
+                return;
+            }
+        }
+
+        try {
+            const response = await fetch('/api/lifting/status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ category, id, action })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                alert(`${actionText}成功！`);
+                loadLiftingData(); // 重新載入最新狀態
+            } else {
+                alert(`${actionText}失敗：${result.error}`);
+            }
+        } catch (error) {
+            console.error('更新狀態失敗:', error);
+            alert('系統發生錯誤，請稍後再試');
+        }
+        }
+    </script>
+</body>
+
+</html>
