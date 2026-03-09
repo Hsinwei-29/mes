@@ -44,3 +44,5 @@ sheets_output.txt
 app/views/static/~*
 [0-9A-F]*000
 venv/
+app/cache/
+*.pkl

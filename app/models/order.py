@@ -4,6 +4,9 @@ from datetime import datetime
 import os
 import urllib.request
 import json
+import pickle
+import hashlib
+
 
 # 全域快取（以 mtime 判斷是否需要重新讀取）
 PICKING_CACHE = {'mtime': 0, 'data': None, 'raw_df': None}
@@ -35,15 +38,34 @@ def get_picking_data():
     try:
         api_url = current_app.config.get('PICKING_API_URL', 'http://192.168.6.119:5002/api/finished_materials')
         
-        # 使用時間戳記作為 mtime（每10分鐘更新一次 or 每次調用都更新?）
-        # 這裡由於 API 隨時可能變動，我們可以用一個簡單的小時/分鐘標記
-        current_time_tag = datetime.now().strftime('%Y%m%d%H%M') # 每分鐘更新
+        # 使用雜湊或時間標記作為 mtime
+        # 每 5 分鐘強制刷新的標記
+        current_time_tag = datetime.now().strftime('%Y%m%d%H%M')[:11] # 每10分鐘或更少
         
-        # 若同分鐘內已抓取過且有資料，直接回傳
+        # 內部的變數快取仍有效，直接回傳
         if PICKING_CACHE['mtime'] == current_time_tag and PICKING_CACHE['data'] is not None:
             return PICKING_CACHE['data']
 
+        # 嘗試讀取硬碟上的 pickle 快取 (持久化)，減少重啟後的首位使用者等待
+        cache_dir = os.path.join(os.getcwd(), 'app', 'cache')
+        os.makedirs(cache_dir, exist_ok=True)
+        cache_file = os.path.join(cache_dir, 'picking_cache.pkl')
+        
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'rb') as f:
+                    cached_data = pickle.load(f)
+                # 若快取是在同一時間標記內建立的，則信任
+                if cached_data.get('time_tag') == current_time_tag:
+                    PICKING_CACHE['mtime'] = current_time_tag
+                    PICKING_CACHE['data'] = cached_data['data']
+                    PICKING_CACHE['raw_df'] = cached_data['raw_df']
+                    return cached_data['data']
+            except:
+                pass
+
         print(f"Fetching Picking Data from API: {api_url}")
+
         
         with urllib.request.urlopen(api_url, timeout=30) as response:
             json_data = json.loads(response.read().decode('utf-8'))
@@ -119,11 +141,19 @@ def get_picking_data():
                 except:
                     pass
 
+        # 持久化快取到硬碟
+        try:
+            with open(cache_file, 'wb') as f:
+                pickle.dump({'time_tag': current_time_tag, 'data': picking_map, 'raw_df': raw_df}, f)
+        except:
+            pass
+
         # 更新快取
         PICKING_CACHE['mtime'] = current_time_tag
         PICKING_CACHE['data'] = picking_map
         PICKING_CACHE['raw_df'] = raw_df
         return picking_map
+
     except Exception as e:
         print(f"Error fetching picking data from API: {e}")
         import traceback
@@ -145,6 +175,22 @@ def load_orders():
                 return ORDERS_CACHE['data']
         except:
             mtime = 0
+
+        # 嘗試讀取持久化快取 (.pkl)
+        cache_dir = os.path.join(os.getcwd(), 'app', 'cache')
+        cache_file = os.path.join(cache_dir, 'orders_cache.pkl')
+        if mtime > 0 and os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'rb') as f:
+                    cached_data = pickle.load(f)
+                if cached_data.get('mtime') == mtime:
+                    # 快取有效且檔案未變，直接秒回
+                    ORDERS_CACHE['data'] = cached_data['data']
+                    ORDERS_CACHE['mtime'] = mtime
+                    return cached_data['data']
+            except:
+                pass
+
 
         picking_data = get_picking_data()
         
@@ -291,11 +337,19 @@ def load_orders():
             'demand': total_demand
         }
         
+        # 持久化結果到硬碟
+        try:
+            with open(cache_file, 'wb') as f:
+                pickle.dump({'mtime': mtime, 'data': result}, f)
+        except:
+            pass
+
         # 更新快取
         ORDERS_CACHE['mtime'] = mtime
         ORDERS_CACHE['data'] = result
         
         return result
+
     except Exception as e:
         print(f"Error loading all orders: {e}")
         return {'orders': [], 'stats': {}, 'demand': {}}

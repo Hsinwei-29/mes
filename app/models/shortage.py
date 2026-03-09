@@ -5,8 +5,10 @@
 """
 import pandas as pd
 from flask import current_app
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
+import json
+import pickle
 
 # 缺料分析結果快取
 SHORTAGE_CACHE = {
@@ -241,6 +243,21 @@ def calculate_shortage():
                 SHORTAGE_CACHE['mtimes'] == current_mtimes):
                 print("Returning cached shortage data")
                 return SHORTAGE_CACHE['data']
+            
+            # 嘗試讀取持久化快取
+            cache_dir = os.path.join(os.getcwd(), 'app', 'cache')
+            cache_file = os.path.join(cache_dir, 'shortage_cache.pkl')
+            if os.path.exists(cache_file):
+                try:
+                    with open(cache_file, 'rb') as f:
+                        cached = pickle.load(f)
+                    if cached.get('mtimes') == current_mtimes:
+                        SHORTAGE_CACHE['data'] = cached['data']
+                        SHORTAGE_CACHE['mtimes'] = current_mtimes
+                        return cached['data']
+                except:
+                    pass
+
         except Exception as e:
             print(f"Error checking mtimes: {e}")
 
@@ -341,7 +358,14 @@ def calculate_shortage():
         SHORTAGE_CACHE['mtimes'] = current_mtimes
         SHORTAGE_CACHE['data'] = shortage_list
         
+        try:
+            with open(cache_file, 'wb') as f:
+                pickle.dump({'mtimes': current_mtimes, 'data': shortage_list}, f)
+        except:
+            pass
+            
         return shortage_list
+
     
     except Exception as e:
         print(f"Error calculating shortage: {e}")

@@ -4,6 +4,8 @@ from openpyxl import load_workbook
 from datetime import datetime
 import json
 import os
+import pickle
+
 
 # ── 快取 ────────────────────────────────────────────────────────────
 _INVENTORY_CACHE = {'mtime': 0, 'data': None}
@@ -39,7 +41,23 @@ def _get_master_model_list():
         if _MASTER_MODEL_CACHE['mtime'] == mtime and _MASTER_MODEL_CACHE['data'] is not None:
             return _MASTER_MODEL_CACHE['data']
 
+        # 嘗試讀取持久化快取
+        cache_dir = os.path.join(os.getcwd(), 'app', 'cache')
+        os.makedirs(cache_dir, exist_ok=True)
+        cache_file = os.path.join(cache_dir, 'master_models.pkl')
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'rb') as f:
+                    cached = pickle.load(f)
+                if cached.get('mtime') == mtime:
+                    _MASTER_MODEL_CACHE['mtime'] = mtime
+                    _MASTER_MODEL_CACHE['data'] = cached['data']
+                    return cached['data']
+            except:
+                pass
+
         xl = pd.ExcelFile(casting_file)
+
         all_models = set()
 
         # 從四個零件分頁收集所有機型
@@ -68,7 +86,15 @@ def _get_master_model_list():
         # 更新快取
         _MASTER_MODEL_CACHE['mtime'] = mtime
         _MASTER_MODEL_CACHE['data'] = result
+        
+        try:
+            with open(cache_file, 'wb') as f:
+                pickle.dump({'mtime': mtime, 'data': result}, f)
+        except:
+            pass
+            
         return result
+
     except Exception as e:
         print(f"Error loading master model list: {e}")
         return []
@@ -84,7 +110,22 @@ def load_casting_inventory():
         if _INVENTORY_CACHE['mtime'] == mtime and _INVENTORY_CACHE['data'] is not None:
             return _INVENTORY_CACHE['data']
 
+        # 嘗試讀取持久化快取
+        cache_dir = os.path.join(os.getcwd(), 'app', 'cache')
+        cache_file = os.path.join(cache_dir, 'inventory_cache.pkl')
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'rb') as f:
+                    cached = pickle.load(f)
+                if cached.get('mtime') == mtime:
+                    _INVENTORY_CACHE['mtime'] = mtime
+                    _INVENTORY_CACHE['data'] = cached['data']
+                    return cached['data']
+            except:
+                pass
+
         xl = pd.ExcelFile(casting_file)
+
         
         # 從各個鑄件工作表計算總數
         inventory = {}
@@ -234,7 +275,15 @@ def load_casting_inventory():
         # 更新快取
         _INVENTORY_CACHE['mtime'] = mtime
         _INVENTORY_CACHE['data'] = result
+        
+        try:
+            with open(cache_file, 'wb') as f:
+                pickle.dump({'mtime': mtime, 'data': result}, f)
+        except:
+            pass
+            
         return result
+
     except Exception as e:
         print(f"Error loading casting inventory: {e}")
         return {'summary': {}, 'semi_finished': {}, 'finished': {}, 'details': [], 'all_models': {}, 'error': str(e)}
