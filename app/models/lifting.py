@@ -10,14 +10,20 @@ import glob
 _LIFTING_CACHE = {'mtime': 0, 'data': None}
 
 def get_lifting_file_path():
-    """尋找D槽中的吊具清冊"""
-    # 這裡我們假設只有一個包含 '吊具清冊' 的 xlsx，或者直接指定
+    """尋找吊具清冊的路徑"""
+    # 指定目前已確認位置的檔案
+    target_path = '/home/hsinwei/mes/吊具吊鍊清冊.xlsx'
+    if os.path.exists(target_path):
+        return target_path
+    
+    # 原有的搜尋邏輯做為備援
     files = glob.glob('D:\\app\\mes\\*吊具*.xlsx')
     if files:
         return files[0]
-    return os.path.join(os.path.dirname(__file__), '..', '..', '吊具清冊.xlsx') # fallback
+    return os.path.join(os.path.dirname(__file__), '..', '..', '吊具清冊.xlsx')
 
 SHEET_NAMES = ['吊具', '吊鍊', '布帶']
+
 
 def ensure_columns(df):
     """確保有借用人跟借用日期欄位"""

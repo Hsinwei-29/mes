@@ -2,9 +2,12 @@ import pandas as pd
 from flask import current_app
 from datetime import datetime
 import os
+import urllib.request
+import json
 
 # 全域快取（以 mtime 判斷是否需要重新讀取）
 PICKING_CACHE = {'mtime': 0, 'data': None, 'raw_df': None}
+
 
 # 工單快取
 ORDERS_CACHE = {'mtime': 0, 'data': None}
@@ -26,31 +29,71 @@ def find_col(df, keywords):
     return None
 
 def get_picking_data():
-    """讀取成品撥料資料，回傳以訂單為 Key 的需求資料 (含 mtime 快取)"""
+    """從 API 讀取成品撥料資料，回傳以訂單為 Key 的需求資料 (含快取)"""
     global PICKING_CACHE
 
     try:
-        picking_file = current_app.config['PICKING_FILE']
-        mtime = os.path.getmtime(picking_file)
-
-        # 若快取仍有效，直接回傳
-        if PICKING_CACHE['mtime'] == mtime and PICKING_CACHE['data'] is not None:
+        api_url = current_app.config.get('PICKING_API_URL', 'http://192.168.6.119:5002/api/finished_materials')
+        
+        # 使用時間戳記作為 mtime（每10分鐘更新一次 or 每次調用都更新?）
+        # 這裡由於 API 隨時可能變動，我們可以用一個簡單的小時/分鐘標記
+        current_time_tag = datetime.now().strftime('%Y%m%d%H%M') # 每分鐘更新
+        
+        # 若同分鐘內已抓取過且有資料，直接回傳
+        if PICKING_CACHE['mtime'] == current_time_tag and PICKING_CACHE['data'] is not None:
             return PICKING_CACHE['data']
 
-        print(f"Loading Picking Data from {picking_file}...")
-        # 讀取全欄位（shortage.py 需要 '需求數量 (EINHEIT)' 和 '領料數量 (EINHEIT)'）
-        raw_df = pd.read_excel(picking_file, engine='openpyxl')
-        # 建立 order.py 自用的精簡版
-        df = raw_df[[raw_df.columns[0], raw_df.columns[1],
-                     raw_df.columns[4], raw_df.columns[5], raw_df.columns[8]]].copy()
-        df.columns = ['訂單', '物料', '未結數量', '物料說明', '需求日期']
+        print(f"Fetching Picking Data from API: {api_url}")
+        
+        with urllib.request.urlopen(api_url, timeout=30) as response:
+            json_data = json.loads(response.read().decode('utf-8'))
+            
+        # 將 JSON 扁平化，轉換為類似 Excel 的 DataFrame 結構
+        rows = []
+        for mat_item in json_data:
+            part_id = str(mat_item.get('物料', '')).strip()
+            part_desc_top = str(mat_item.get('物料說明', '')).strip()
+            un_stock = mat_item.get('unrestricted_stock', 0.0)
+            ins_stock = mat_item.get('inspection_stock', 0.0)
+            
+            for detail in mat_item.get('demand_details', []):
+                order_id = str(detail.get('訂單', '')).strip()
+                if not order_id: continue
+                
+                # 需求與領料 (API 若無提供需求數量，針對已領足項目(pending=0)預設為 1.0 確保顯示)
+                pending = float(detail.get('未結數量 (EINHEIT)', 0.0) or 0.0)
+                api_demand = detail.get('需求數量 (EINHEIT)')
+                
+                if api_demand is not None:
+                    demand = float(api_demand)
+                else:
+                    # 若 API 沒給需求量，且未結為 0，暗示已領，設為 1.0 供系統判定
+                    demand = pending if pending > 0 else 1.0
+                
+                picked = demand - pending
 
+                
+                rows.append({
+                    '訂單': order_id,
+                    '物料': part_id,
+                    '需求數量 (EINHEIT)': demand,
+                    '領料數量 (EINHEIT)': picked,
+                    '未結數量 (EINHEIT)': pending,
+                    '物料說明': detail.get('物料說明', part_desc_top),
+                    '需求日期': detail.get('需求日期', ''),
+                    'unrestricted_stock': un_stock,
+                    'inspection_stock': ins_stock
+                })
+        
+        raw_df = pd.DataFrame(rows)
+        
+        # 建立 picking_map (用於 order.py 其他邏輯)
         picking_map = {}
-        for _, row in df.iterrows():
+        for _, row in raw_df.iterrows():
             order_id = clean_id(row['訂單'])
             if not order_id: continue
 
-            qty = row['未結數量']
+            qty = row['未結數量 (EINHEIT)']
             if pd.isna(qty) or qty <= 0: continue
 
             item_name = str(row['物料說明'])
@@ -68,17 +111,25 @@ def get_picking_data():
             elif '立柱' in item_name:
                 picking_map[order_id]['立柱'] += qty
 
-            if pd.notna(need_date):
-                picking_map[order_id]['dates'].append(need_date)
+            if pd.notna(need_date) and need_date != "":
+                try:
+                    # 轉換為 Timestamp 格式以保持相容性
+                    dt = pd.to_datetime(need_date)
+                    picking_map[order_id]['dates'].append(dt)
+                except:
+                    pass
 
-        # 更新快取（同時保存 raw_df 供 shortage.py 重用）
-        PICKING_CACHE['mtime'] = mtime
+        # 更新快取
+        PICKING_CACHE['mtime'] = current_time_tag
         PICKING_CACHE['data'] = picking_map
         PICKING_CACHE['raw_df'] = raw_df
         return picking_map
     except Exception as e:
-        print(f"Error loading picking data: {e}")
+        print(f"Error fetching picking data from API: {e}")
+        import traceback
+        traceback.print_exc()
         return PICKING_CACHE['data'] or {}
+
 
 def load_orders():
     """載入工單總表資料並整合撥料需求 (整合多分頁並解決亂碼)"""

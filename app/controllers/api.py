@@ -74,6 +74,89 @@ def api_orders():
     data['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     return jsonify(data)
 
+@api_bp.route('/orders/finished/requirements', methods=['GET'])
+def api_finished_orders_requirements():
+    """一次性獲取系統中所有 1 開頭 (成品) 工單的物料需求明細"""
+    try:
+        import pandas as pd
+        from ..models.order import get_picking_data, PICKING_CACHE
+        # 確保快取已載入
+        get_picking_data()
+        
+        raw_df = PICKING_CACHE.get('raw_df')
+        if raw_df is None:
+            return jsonify({'error': '資料尚未載入'}), 500
+            
+        # 建立回傳格式
+        data = {}
+        for _, row in raw_df.iterrows():
+            try:
+                # 只處理 1 開頭的工單 (如果是整數/浮點數或字串)
+                order_val = row.get('訂單')
+                if pd.isna(order_val): continue
+                
+                try:
+                    order_str = str(int(float(order_val))).strip()
+                except (ValueError, TypeError):
+                    order_str = str(order_val).strip()
+                    
+                if not order_str.startswith('1'):
+                    continue
+                    
+                # 建立工單 list
+                if order_str not in data:
+                    data[order_str] = []
+                    
+                # 讀取欄位，處理 NaN
+                demand_qty = float(row.get('需求數量 (EINHEIT)', 0) or 0)
+                picked_qty = float(row.get('領料數量 (EINHEIT)', 0) or 0)
+                pending_qty = float(row.get('未結數量 (EINHEIT)', 0) or 0)
+                
+                if pd.isna(demand_qty): demand_qty = 0.0
+                if pd.isna(picked_qty): picked_qty = 0.0
+                if pd.isna(pending_qty): pending_qty = 0.0
+                
+                # Stock (預設0.0 因為 picking 檔案沒有提供庫存)
+                un_stock = 0.0
+                ins_stock = 0.0
+                shortage = max(0.0, pending_qty - (un_stock + ins_stock))
+                
+                # 處理日期
+                req_date = row.get('需求日期')
+                req_date_str = ""
+                if pd.notna(req_date):
+                    try:
+                        req_date_str = req_date.strftime('%Y-%m-%d')
+                    except Exception:
+                        req_date_str = str(req_date).split(' ')[0]
+                
+                # 新增至列表
+                data[order_str].append({
+                    "物料": str(row.get('物料', '')).strip() if pd.notna(row.get('物料')) else "",
+                    "物料說明": str(row.get('物料說明', '')).strip() if pd.notna(row.get('物料說明')) else "",
+                    "需求數量 (EINHEIT)": demand_qty,
+                    "領料數量 (EINHEIT)": picked_qty,
+                    "未結數量 (EINHEIT)": pending_qty,
+                    "需求日期": req_date_str,
+                    "unrestricted_stock": un_stock,
+                    "inspection_stock": ins_stock,
+                    "order_shortage": shortage
+                })
+            except Exception as e:
+                continue
+                
+        return jsonify({
+            'status': 'success',
+            'count': len(data),
+            'data': data
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': '一個內部伺服器錯誤發生了'}), 500
+
+
 @api_bp.route('/summary')
 @api_bp.route('/summary_v2')
 def api_summary():

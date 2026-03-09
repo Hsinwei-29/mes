@@ -219,15 +219,19 @@ def calculate_shortage():
         # 0. 檢查快取
         casting_file = current_app.config['CASTING_FILE']
         workorder_file = current_app.config['WORKORDER_FILE']
-        picking_file = current_app.config['PICKING_FILE']
+        from ..models.order import PICKING_CACHE, get_picking_data
+        
+        # 確保撥料資料已載入 (這會觸發 API 抓取並更新 PICKING_CACHE['mtime'])
+        get_picking_data()
         
         current_mtimes = (0, 0, 0)
         try:
             current_mtimes = (
                 os.path.getmtime(casting_file),
                 os.path.getmtime(workorder_file),
-                os.path.getmtime(picking_file)
+                PICKING_CACHE['mtime']  # 使用 API 抓取時間標記
             )
+
             
             # 如果快取存在且有資料且檔案未修改，直接回傳
             # 注意：空 list 不回傳快取，避免啟動競爭條件導致永久快取空結果
