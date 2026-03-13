@@ -52,7 +52,7 @@ def get_workorder_picking_mapping(casting_inventory=None):
 
         # ── 1. 工單基本資訊（.xls 自動判斷 engine）────────────────────
         workorder_file = current_app.config['WORKORDER_FILE']
-        wo_df = pd.read_excel(workorder_file, sheet_name=0)
+        wo_df = pd.read_excel(workorder_file, sheet_name=0, engine='calamine')
 
         workorder_map = {}
         for _, row in wo_df.iterrows():
@@ -86,7 +86,7 @@ def get_workorder_picking_mapping(casting_inventory=None):
         get_picking_data()
         raw_df = PICKING_CACHE.get('raw_df')
         if raw_df is None:
-            raw_df = pd.read_excel(picking_file, engine='openpyxl')
+            raw_df = pd.read_excel(picking_file, engine='calamine')
 
         # ── 3. 比對 ───────────────────────────────────────────────────
         for _, row in raw_df.iterrows():

@@ -46,6 +46,28 @@ def load_lifting_inventory():
     try:
         xl = pd.ExcelFile(file_path)
         data = {}
+        
+        # 輔助：放置位置排序關鍵值
+        def get_location_sort_val(loc_str):
+            loc = str(loc_str).strip()
+            # 正規化：去除換行、空白，統一「第1區」與「第一區」
+            loc = loc.replace('\n', '').replace(' ', '')
+            
+            mapping = {
+                '第一區': 1, '第1區': 1,
+                '第二區': 2, '第2區': 2,
+                '第三區': 3, '第3區': 3,
+                '第四區': 4, '第4區': 4,
+                '第五區': 5, '第5區': 5,
+                '第六區': 6, '第6區': 6,
+                '第七區': 7, '第7區': 7,
+                '第八區': 8, '第8區': 8,
+                '第九區': 9, '第9區': 9,
+                '第十區': 10, '第10區': 10
+            }
+            # 如果符合對照表則回傳對應數字，否則回傳一個極大值
+            return mapping.get(loc, 999), loc
+
         for sheet in SHEET_NAMES:
             if sheet in xl.sheet_names:
                 df = pd.read_excel(xl, sheet_name=sheet)
@@ -59,16 +81,22 @@ def load_lifting_inventory():
                     item_id = str(row.get('吊具編號', '')).strip()
                     if not item_id or item_id == 'nan':
                         continue
+                    
+                    loc_val = str(row.get('放置位置', '')).strip()
                         
                     items.append({
                         'category': sheet,
                         'id': item_id,
                         'spec': str(row.get('吊具規格 /重量/長度', '')),
-                        'location': str(row.get('放置位置', '')),
+                        'location': loc_val,
                         'status': str(row.get('使用狀態', '')),
                         'borrower': str(row.get('目前借用人', '')),
                         'borrow_date': str(row.get('借用日期', ''))
                     })
+                
+                # 排序：按放置位置 (normalized)
+                items.sort(key=lambda x: get_location_sort_val(x['location']))
+                
                 data[sheet] = items
                 
         _LIFTING_CACHE['mtime'] = current_mtime
@@ -77,6 +105,45 @@ def load_lifting_inventory():
     except Exception as e:
         print(f"Error loading lifting inventory: {e}")
         return {}
+
+
+def log_lifting_action(category, item_id, action, user_name):
+    """紀錄吊具操作歷史"""
+    history_file = '/home/hsinwei/app/mes/logs/lifting_history.json'
+    history = []
+    if os.path.exists(history_file):
+        try:
+            with open(history_file, 'r', encoding='utf-8') as f:
+                history = json.load(f)
+        except:
+            history = []
+            
+    record = {
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'category': category,
+        'item_id': item_id,
+        'action': '領用' if action == 'borrow' else '歸還',
+        'user': user_name
+    }
+    history.insert(0, record)
+    # 限制紀錄數量
+    history = history[:1000]
+    
+    os.makedirs(os.path.dirname(history_file), exist_ok=True)
+    with open(history_file, 'w', encoding='utf-8') as f:
+        json.dump(history, f, ensure_ascii=False, indent=2)
+
+def get_lifting_history():
+    """取得吊具操作歷史"""
+    history_file = '/home/hsinwei/app/mes/logs/lifting_history.json'
+    if os.path.exists(history_file):
+        try:
+            with open(history_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return []
+    return []
+
 
 def update_lifting_status(category, item_id, action, user_name):
     """
@@ -137,6 +204,9 @@ def update_lifting_status(category, item_id, action, user_name):
             return False, "未知的操作"
 
         wb.save(file_path)
+        
+        # 紀錄歷程
+        log_lifting_action(category, item_id, action, user_name)
         
         # 強制刷新快取
         _LIFTING_CACHE['mtime'] = 0 

@@ -107,6 +107,52 @@
             outline: none;
             border-color: var(--accent-blue);
         }
+
+        .history-section {
+            margin-top: 2rem;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+        }
+
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 180px 100px 120px 100px 1fr;
+            align-items: center;
+            font-size: 0.95rem;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-timestamp { color: var(--text-muted); font-size: 0.85rem; }
+        .history-action { font-weight: bold; }
+        .history-id { font-family: monospace; }
+        .history-user { color: var(--accent-blue); }
+        .history-action.領用 { color: #f59e0b; }
+        .history-action.歸還 { color: #10b981; }
+
+        .layout-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        @media (max-width: 1200px) {
+            .layout-container {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 
@@ -155,31 +201,47 @@
                         autofocus>
                 </div>
 
-                <div class="tabs">
-                    <button class="tab-btn active" onclick="switchTab('吊具')">吊具</button>
-                    <button class="tab-btn" onclick="switchTab('吊鍊')">吊鍊</button>
-                    <button class="tab-btn" onclick="switchTab('布帶')">布帶</button>
-                </div>
+                <div class="layout-container">
+                    <div class="main-table-area">
+                        <div class="tabs">
+                            <button class="tab-btn active" onclick="switchTab('吊具')">吊具</button>
+                            <button class="tab-btn" onclick="switchTab('吊鍊')">吊鍊</button>
+                            <button class="tab-btn" onclick="switchTab('布帶')">布帶</button>
+                        </div>
 
-                <div class="details-table-wrapper">
-                    <table class="details-table">
-                        <thead>
-                            <tr>
-                                <th>編號</th>
-                                <th>規格/重量/長度</th>
-                                <th>放置位置</th>
-                                <th>目前狀態</th>
-                                <th>借用人</th>
-                                <th>借用日期</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="liftingTableBody">
-                            <tr>
-                                <td colspan="7" class="loading">載入中...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                        <div class="details-table-wrapper">
+                            <table class="details-table">
+                                <thead>
+                                    <tr>
+                                        <th>編號</th>
+                                        <th>規格/重量/長度</th>
+                                        <th>放置位置</th>
+                                        <th>目前狀態</th>
+                                        <th>借用人</th>
+                                        <th>借用日期</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="liftingTableBody">
+                                    <tr>
+                                        <td colspan="7" class="loading">載入中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="history-side-area">
+                        <div class="history-section">
+                            <h3 style="margin-top: 0; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                📜 最近操作履歷
+                                <button onclick="loadHistory()" style="background: none; border: none; cursor: pointer; font-size: 0.9rem;">🔄</button>
+                            </h3>
+                            <div id="historyList" class="history-list">
+                                <div style="text-align: center; color: #666; padding: 2rem;">載入中...</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>
@@ -191,6 +253,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             loadLiftingData();
+            loadHistory();
 
             const barcodeInput = document.getElementById('barcodeInput');
             if (barcodeInput) {
@@ -334,8 +397,9 @@
             const result = await response.json();
 
             if (result.success) {
-                alert(`${actionText}成功！`);
+                // alert(`${actionText}成功！`);
                 loadLiftingData(); // 重新載入最新狀態
+                loadHistory();     // 重新載入履歷
             } else {
                 alert(`${actionText}失敗：${result.error}`);
             }
@@ -343,6 +407,35 @@
             console.error('更新狀態失敗:', error);
             alert('系統發生錯誤，請稍後再試');
         }
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/lifting/history?_t=' + new Date().getTime());
+                const result = await response.json();
+                const historyList = document.getElementById('historyList');
+                
+                if (result.success && result.history) {
+                    if (result.history.length === 0) {
+                        historyList.innerHTML = '<div style="text-align: center; color: #666; padding: 2rem;">尚無紀錄</div>';
+                        return;
+                    }
+                    
+                    historyList.innerHTML = result.history.map(h => `
+                        <div class="history-item">
+                            <span class="history-timestamp">${h.timestamp}</span>
+                            <span class="history-action ${h.action}">${h.action}</span>
+                            <span class="history-id">${h.item_id}</span>
+                            <span class="history-user">${h.user}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    historyList.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 2rem;">履歷載入失敗</div>';
+                }
+            } catch (error) {
+                console.error('載入履歷失敗:', error);
+                document.getElementById('historyList').innerHTML = '<div style="text-align: center; color: #ef4444; padding: 2rem;">系統錯誤</div>';
+            }
         }
     </script>
 </body>

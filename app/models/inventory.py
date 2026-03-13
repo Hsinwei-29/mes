@@ -30,7 +30,7 @@ def normalize_model_name(model_name):
     
     return normalized
 
-def _get_master_model_list():
+def _get_master_model_list(xl=None):
     """從所有零件工作表收集完整機型清單（保留原始名稱，智能分組排序）"""
     global _MASTER_MODEL_CACHE
     try:
@@ -56,7 +56,9 @@ def _get_master_model_list():
             except:
                 pass
 
-        xl = pd.ExcelFile(casting_file)
+        if xl is None:
+            # 使用更快的 calamine 引擎
+            xl = pd.ExcelFile(casting_file, engine='calamine')
 
         all_models = set()
 
@@ -124,7 +126,8 @@ def load_casting_inventory():
             except:
                 pass
 
-        xl = pd.ExcelFile(casting_file)
+        # 使用更快的 calamine 引擎 
+        xl = pd.ExcelFile(casting_file, engine='calamine')
 
         
         # 從各個鑄件工作表計算總數
@@ -149,7 +152,7 @@ def load_casting_inventory():
         }
 
         # 1. 建立完整機型清單（從所有零件分頁收集）
-        master_models = _get_master_model_list()
+        master_models = _get_master_model_list(xl=xl)
         for model_str in master_models:
             all_models[model_str] = {'機型': model_str, '工作台': 0, '底座': 0, '橫樑': 0, '立柱': 0}
         
@@ -586,10 +589,180 @@ def get_history_stats(part_type):
         return {'total_edits': 0, 'unique_items': 0, 'recent_activity': []}
 
 
+def get_stock_history(operation_type=None, part_type=None, date_from=None, date_to=None, keyword=None, limit=200):
+    """查詢入庫/出庫歷史記錄
+    
+    Args:
+        operation_type: 'in' (入庫), 'out' (出庫), or None (全部)
+        part_type: 零件類型 (底座/工作台/橫樑/立柱), or None (全部)
+        date_from: 開始日期 (YYYY-MM-DD)
+        date_to: 結束日期 (YYYY-MM-DD)
+        keyword: 關鍵字搜尋 (品號、備註等)
+        limit: 最大回傳筆數
+    """
+    try:
+        log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs', 'edit_history.json')
+        
+        if not os.path.exists(log_file):
+            return {'records': [], 'stats': {'total': 0, 'stock_in': 0, 'stock_out': 0}}
+        
+        with open(log_file, 'r', encoding='utf-8') as f:
+            history = json.load(f)
+        
+        records = []
+        stats = {'total': 0, 'stock_in': 0, 'stock_out': 0}
+        
+
+        # 加裝機型查找表
+        _ITEM_MODEL_MAP = {}
+        try:
+            casting_file = current_app.config['CASTING_FILE']
+            import pandas as pd
+            xl = pd.ExcelFile(casting_file)
+            for part_name, sheet_idx in [('底座', 1), ('工作台', 2), ('橫樑', 3), ('立柱', 4)]:
+                df = pd.read_excel(xl, sheet_name=sheet_idx)
+                for _, row in df.iterrows():
+                    p_id = str(row.iloc[0]).strip()
+                    model = str(row.iloc[1]).strip()
+                    if p_id and p_id != 'nan' and p_id != '品號' and model and model != 'nan':
+                        _ITEM_MODEL_MAP[p_id] = model
+        except Exception as ex:
+            print(f"Error building model map: {ex}")
+
+        for h in history:
+            field = h.get('field', '')
+            note_text = h.get('note', '')
+            
+            # 判斷是否為入庫或出庫記錄
+            is_stock_in = '入庫' in field
+            is_stock_out = '出庫' in field
+            
+            if not is_stock_in and not is_stock_out:
+                continue
+            
+            # 過濾操作類型
+            if operation_type == 'in' and not is_stock_in:
+                continue
+            if operation_type == 'out' and not is_stock_out:
+                continue
+            
+            # 過濾零件類型
+            if part_type and h.get('part') != part_type:
+                continue
+            
+            # 過濾日期範圍
+            if date_from or date_to:
+                try:
+                    ts = datetime.strptime(h.get('timestamp', ''), '%Y-%m-%d %H:%M:%S')
+                    if date_from:
+                        from_dt = datetime.strptime(date_from, '%Y-%m-%d')
+                        if ts < from_dt:
+                            continue
+                    if date_to:
+                        to_dt = datetime.strptime(date_to, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+                        if ts > to_dt:
+                            continue
+                except:
+                    pass
+            
+            # 關鍵字搜尋 (品號、備註、field)
+            if keyword:
+                kw = keyword.lower()
+                searchable = ' '.join([
+                    str(h.get('item_id', '')),
+                    str(h.get('note', '')),
+                    str(h.get('field', '')),
+                    str(h.get('user', '')),
+                    str(h.get('part', ''))
+                ]).lower()
+                if kw not in searchable:
+                    continue
+            
+            # 解析工單編碼 (從 note 或 field 中解析)
+            order_code = ''
+            if note_text:
+                import re
+                # 優先抓取「工單編碼」
+                oc_match = re.search(r'工單編碼:\s*([^,]+)', str(note_text))
+                if oc_match:
+                    order_code = oc_match.group(1).strip()
+                else:
+                    # 備案：抓取「鑄件編號」
+                    cn_match = re.search(r'鑄件編號:\s*([^,]+)', str(note_text))
+                    if cn_match:
+                        order_code = cn_match.group(1).strip()
+            
+            record = {
+                'timestamp': h.get('timestamp', ''),
+                'user': h.get('user', ''),
+                'part': h.get('part', ''),
+                'item_id': h.get('item_id', ''),
+                'model': _ITEM_MODEL_MAP.get(str(h.get('item_id', '')), ''),
+                'field': field,
+                'old_value': h.get('old_value', 0),
+                'new_value': h.get('new_value', 0),
+                'note': note_text,
+                'operation': '入庫' if is_stock_in else '出庫',
+                'quantity': abs((h.get('new_value') or 0) - (h.get('old_value') or 0)),
+                'order_code': order_code
+            }
+            
+            # 從 field 或 note 中解析供應商/工單資訊
+            if is_stock_in:
+                # e.g. "素材 (入庫: 正鋒(CFC))"
+                import re
+                supplier_match = re.search(r'入庫:\s*(.+)\)', field)
+                record['supplier'] = supplier_match.group(1).strip() if supplier_match else ''
+                
+                # 如果 field 沒抓到，從 note 抓
+                if not record['supplier'] and note_text:
+                    s_note_match = re.search(r'鑄造商:\s*([^,]+)', str(note_text))
+                    if s_note_match:
+                        record['supplier'] = s_note_match.group(1).strip()
+            elif is_stock_out:
+                # e.g. "成品研磨 (出庫: 工單 123456)"
+                import re
+                wo_match = re.search(r'工單\s*(\S+)', field)
+                po_match = re.search(r'採購單\s*(\S+)', field)
+                
+                parsed_wo = wo_match.group(1).rstrip(',)') if wo_match else ''
+                record['work_order'] = parsed_wo
+                record['purchase_order'] = po_match.group(1).rstrip(')') if po_match else ''
+                
+                # 從 note 中特別抓取鑄造商 (如果是出庫時有特別標記)
+                if note_text:
+                    s_note_match = re.search(r'鑄造商:\s*([^,]+)', str(note_text))
+                    if s_note_match:
+                        record['supplier'] = s_note_match.group(1).strip()
+                
+                # 如果 note 沒寫工單，用 field 裡的
+                if not record['order_code'] and parsed_wo:
+                    record['order_code'] = parsed_wo
+            
+            records.append(record)
+            
+            # 更新統計
+            if is_stock_in:
+                stats['stock_in'] += 1
+            if is_stock_out:
+                stats['stock_out'] += 1
+        
+        stats['total'] = len(records)
+        
+        return {
+            'records': records[:limit],
+            'stats': stats
+        }
+    
+    except Exception as e:
+        print(f"Error getting stock history: {e}")
+        import traceback
+        traceback.print_exc()
+        return {'records': [], 'stats': {'total': 0, 'stock_in': 0, 'stock_out': 0}}
 
 
 
-def stock_in_material(part_name, quantity, model=None, supplier=None, user=None, work_order_code=None):
+def stock_in_material(part_name, quantity, model=None, supplier=None, user=None, work_order_code=None, barcode=None):
     """
     入庫操作 - 增加素材數量
     """
@@ -692,8 +865,13 @@ def stock_in_material(part_name, quantity, model=None, supplier=None, user=None,
                 field_name += ' (入庫)'
                 
             note = None
+            note_parts = []
             if work_order_code:
-                note = f"工單編碼: {work_order_code}"
+                note_parts.append(f"工單編碼: {work_order_code}")
+            if barcode:
+                note_parts.append(f"鑄件編號: {barcode}")
+            if note_parts:
+                note = ', '.join(note_parts)
                 
             try:
                 log_edit(part_name, log_data['item_id'], field_name, 
@@ -717,7 +895,7 @@ def stock_in_material(part_name, quantity, model=None, supplier=None, user=None,
         return {'success': False, 'error': str(e)}
 
 
-def stock_out_product(part_name, work_order, quantity, model=None, purchase_order=None):
+def stock_out_product(part_name, work_order, quantity, model=None, purchase_order=None, supplier=None):
     """
     出庫操作 - 扣除成品數量
     """
@@ -844,9 +1022,15 @@ def stock_out_product(part_name, work_order, quantity, model=None, purchase_orde
             if purchase_order:
                 field_name += f', 採購單 {purchase_order}'
             field_name += ')'
+            
+            # 將鑄造商資訊也存入 note
+            note = f"工單編碼: {work_order}"
+            if supplier:
+                note += f", 鑄造商: {supplier}"
+                
             try:
                 log_edit(part_name, log_data['item_id'], field_name, 
-                         log_data['old_value'], log_data['new_value'], user_id)
+                         log_data['old_value'], log_data['new_value'], user_id, note)
             except Exception as e:
                 print(f"Failed to log edit: {e}")
         

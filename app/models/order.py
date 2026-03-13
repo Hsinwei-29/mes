@@ -194,7 +194,7 @@ def load_orders():
 
         picking_data = get_picking_data()
         
-        xl = pd.ExcelFile(workorder_file)
+        xl = pd.ExcelFile(workorder_file, engine='calamine')
         all_parsed_orders = []
         seen_work_orders = set()
         

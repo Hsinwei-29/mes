@@ -341,6 +341,62 @@ def api_update_inventory(part_type):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@api_bp.route('/inventory/batch_update/<part_type>', methods=['POST'])
+def api_batch_update_inventory(part_type):
+    """批次更新鑄件製程數據"""
+    try:
+        from flask_login import current_user
+        
+        # 權限檢查
+        is_logged_in = False
+        username = None
+        user_role = None
+        if current_user.is_authenticated:
+            is_logged_in = True
+            username = current_user.username
+            user_role = current_user.role
+        elif 'user_id' in session:
+            is_logged_in = True
+            username = session.get('username', '系統使用者')
+            user_role = session.get('role')
+        
+        if not is_logged_in:
+            return jsonify({'success': False, 'error': '請先登入'}), 401
+        if user_role != 'admin':
+            return jsonify({'success': False, 'error': '僅管理員可編輯數據'}), 403
+            
+        data = request.get_json()
+        rows = data.get('rows', [])
+        
+        all_results = []
+        for row_data in rows:
+            item_id = row_data.get('item_id')
+            model_name = row_data.get('model_name')
+            updates = row_data.get('updates', {})
+            
+            for field, new_value in updates.items():
+                result = update_cell(part_type, item_id, field, new_value, username, model_name=model_name)
+                if result.get('success'):
+                    actual_item_id = result.get('item_id', item_id)
+                    socketio.emit('data_updated', {
+                        'part': part_type,
+                        'item_id': actual_item_id,
+                        'field': field,
+                        'old_value': result.get('old_value'),
+                        'new_value': new_value,
+                        'total': result.get('total'),
+                        'user': username,
+                        'timestamp': datetime.now().strftime('%H:%M:%S')
+                    })
+                    result['item_id'] = actual_item_id
+                    all_results.append(result)
+                else:
+                    return jsonify({'success': False, 'error': f"品號 {item_id} 更新失敗: {result.get('error')}"})
+                    
+        return jsonify({'success': True, 'count': len(all_results)})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @api_bp.route('/inventory/history/<part_type>')
 def api_edit_history(part_type):
     """取得修改歷程"""
@@ -444,6 +500,35 @@ def api_shortage_critical(part_type):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@api_bp.route('/stock/history')
+def api_stock_history():
+    """查詢入庫/出庫歷史記錄"""
+    from ..models.inventory import get_stock_history
+    
+    operation_type = request.args.get('type')       # 'in', 'out', or None
+    part_type = request.args.get('part')             # 零件類型
+    date_from = request.args.get('date_from')        # YYYY-MM-DD
+    date_to = request.args.get('date_to')            # YYYY-MM-DD
+    keyword = request.args.get('keyword')            # 關鍵字
+    
+    try:
+        result = get_stock_history(
+            operation_type=operation_type,
+            part_type=part_type,
+            date_from=date_from,
+            date_to=date_to,
+            keyword=keyword
+        )
+        return jsonify({
+            'success': True,
+            'records': result['records'],
+            'stats': result['stats'],
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @api_bp.route('/stock/in', methods=['POST'])
 @login_required
 def stock_in():
@@ -459,6 +544,7 @@ def stock_in():
         model = data.get('model')
         supplier = data.get('supplier')
         work_order_code = data.get('work_order_code')
+        barcode = data.get('barcode')
         
         if not part_name or not quantity:
             return jsonify({'success': False, 'error': '缺少必要參數'}), 400
@@ -471,7 +557,8 @@ def stock_in():
             model=model, 
             supplier=supplier, 
             user=current_user.username,
-            work_order_code=work_order_code
+            work_order_code=work_order_code,
+            barcode=barcode
         )
         
         if result['success']:
@@ -506,7 +593,8 @@ def stock_out():
         
         # 調用 inventory.py 中的出庫函數
         from ..models.inventory import stock_out_product
-        result = stock_out_product(part_name, work_order, quantity, model, purchase_order)
+        supplier = data.get('supplier')
+        result = stock_out_product(part_name, work_order, quantity, model, purchase_order, supplier)
         
         if result['success']:
             # 通知所有客戶端更新數據
@@ -621,3 +709,12 @@ def api_update_lifting():
         return jsonify({'success': True, 'msg': msg})
     else:
         return jsonify({'success': False, 'error': msg})
+
+@api_bp.route('/lifting/history', methods=['GET'])
+def api_lifting_history():
+    from ..models.lifting import get_lifting_history
+    history = get_lifting_history()
+    return jsonify({
+        'success': True,
+        'history': history
+    })
