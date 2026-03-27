@@ -16,6 +16,9 @@
             padding: 1rem 2rem;
             background: var(--bg-secondary);
             border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 55px; /* Stay right below the main header */
+            z-index: 100;
         }
 
         .back-btn {
@@ -50,7 +53,6 @@
             border-collapse: collapse;
             background: var(--bg-card);
             border-radius: var(--radius-md);
-            overflow: hidden;
         }
 
         .edit-table th,
@@ -65,6 +67,10 @@
             color: var(--text-secondary);
             font-weight: 600;
             font-size: 0.875rem;
+            position: sticky;
+            top: 185px; /* Stay right below the search bar */
+            z-index: 98;
+            box-shadow: 0 2px 4px -1px rgba(0,0,0,0.05);
         }
 
         .edit-table th.highlight-final {
@@ -100,6 +106,78 @@
         .edit-input:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+        }
+
+        /* 儲存格細節圖示 (PO/WO 查詢) */
+        .cell-info-icon {
+            position: absolute;
+            right: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.9rem;
+            color: #2563eb !important;
+            cursor: pointer;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(37, 99, 235, 0.1);
+            border: 1px solid rgba(37, 99, 235, 0.2);
+            border-radius: 4px;
+            transition: all 0.2s;
+            z-index: 5;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .cell-info-icon:hover {
+            background: #2563eb;
+            color: #ffffff !important;
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 2px 5px rgba(37, 99, 235, 0.3);
+        }
+
+        /* 歷史紀錄編輯按鈕 */
+        .edit-note-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            opacity: 0.5;
+            transition: all 0.2s;
+        }
+
+        .edit-note-btn:hover {
+            opacity: 1;
+            background: rgba(37, 99, 235, 0.1);
+            color: #2563eb;
+        }
+
+        .note-cell {
+            position: relative;
+            min-width: 200px;
+        }
+
+        .history-note-input {
+            width: 100%;
+            padding: 4px 8px;
+            border: 1.5px solid #2563eb;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        /* 讓 TD 容器支援相對定位 */
+        .edit-table td {
+            position: relative;
+        }
+
+        .total-col {
+            position: relative;
         }
 
         .save-btn {
@@ -728,7 +806,7 @@
 
 
             <!-- 機型搜尋框 -->
-            <div style="margin: 0 0 1.25rem 0; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
+            <div id="searchBarContainer" style="margin: -1rem -2rem 1.25rem -2rem; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; position: sticky; top: 115px; z-index: 99; background: var(--bg-primary); border-bottom: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
                 <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1;">
                     <label style="color: var(--text-secondary); font-size: 0.95rem; white-space: nowrap; font-weight: 600;">🔍 機型查詢：</label>
                     <input type="text" id="modelSearchInput" placeholder="輸入機型名稱即時過濾..." oninput="filterByModel(this.value)"
@@ -771,12 +849,16 @@
                         {% elif header == '機型' %}
                         <td class="model-col">{{ row[header] }}</td>
                         {% elif header == headers[-1] %}
-                        <td class="total-col">{{ row[header] if row[header] else 0 }}</td>
+                        <td class="total-col" style="padding-right: 28px;">
+                            <span>{{ row[header] if row[header] else 0 }}</span>
+                            <span class="cell-info-icon" onclick="showCellHistory('{{ row['品號'] }}', '{{ header }}', '{{ row['機型'] }}')" title="點擊查看採購編號與工單詳情">🔎</span>
+                        </td>
                         {% else %}
-                        <td>
+                        <td style="padding-right: 28px;">
                             <input type="number" class="edit-input" data-field="{{ header }}"
                                 value="{{ row[header] if row[header] else 0 }}" min="0" {{ 'disabled' if not is_admin
-                                else '' }} onchange="markDirty(this)">
+                                else '' }} onchange="markDirty(this)" style="margin-right: 4px;">
+                            <span class="cell-info-icon" onclick="showCellHistory('{{ row['品號'] }}', '{{ header }}', '{{ row['機型'] }}')" title="點擊查看採購編號與工單詳情">🔎</span>
                         </td>
                         {% endif %}
                         {% endfor %}
@@ -877,7 +959,6 @@
                                     <th>時間</th>
                                     <th>類型</th>
                                     <th class="no-translate" translate="no">【機型/品號】</th>
-                                    <th class="no-translate" translate="no">【鑄造商】</th>
                                     <th class="no-translate" translate="no">【工單編碼】</th>
                                     <th>數量</th>
                                     <th>庫存變動</th>
@@ -887,7 +968,7 @@
                             </thead>
                             <tbody id="stockHistoryTableBody">
                                 <tr>
-                                    <td colspan="9" class="stock-history-empty">
+                                    <td colspan="8" class="stock-history-empty">
                                         <div class="empty-icon">📋</div>
                                         <div>請設定條件後點擊「查詢」</div>
                                     </td>
@@ -912,6 +993,35 @@
                     </div>
                 </div>
             </div>
+        <!-- 儲存格細節彈出視窗 (顯示 PO/WO) -->
+        <div id="cellHistoryModal" class="history-modal" style="z-index: 1002;">
+            <div class="history-modal-content" style="max-width: 700px;">
+                <div class="history-modal-header">
+                    <h2 id="cellHistoryTitle">📋 庫存來源明細</h2>
+                    <button class="history-modal-close" onclick="closeCellHistoryModal()">&times;</button>
+                </div>
+                <div class="history-modal-body">
+                    <div id="cellHistoryInfo" style="margin-bottom: 1rem; font-size: 0.95rem; color: var(--text-secondary);">
+                        <!-- 動態載入機型與欄位資訊 -->
+                    </div>
+                    <div class="stock-history-container">
+                        <table class="stock-history-table">
+                            <thead>
+                                <tr>
+                                    <th>時間</th>
+                                    <th>操作</th>
+                                    <th>數量</th>
+                                    <th>工單/採購編號</th>
+                                    <th>人員</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cellHistoryTableBody">
+                                <!-- 動態載入 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- 需求分配彈出視窗 -->
@@ -933,8 +1043,8 @@
                                     <th>工單號碼</th>
                                     <th>客戶</th>
                                     <th>需求量</th>
-                                    <th>待領</th>
-                                    <th>分配數</th>
+                                    <th>已領</th>
+                                    <th>未結案</th>
                                     <th>生產開始</th>
                                     <th>狀態</th>
                                 </tr>
@@ -966,10 +1076,10 @@
                         </div>
                         <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">機型：</label>
-                            <select id="stockInModel" required
-                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;">
-                                <option value="">請選擇機型</option>
-                            </select>
+                            <input type="text" id="stockInModel" list="stockInModelList" required autocomplete="off"
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
+                                placeholder="請點擊輸入或搜尋機型...">
+                            <datalist id="stockInModelList"></datalist>
                         </div>
                         <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">鑄造商：</label>
@@ -1021,29 +1131,17 @@
                     <form id="stockOutForm" style="display: flex; flex-direction: column; gap: 1.5rem;">
                         <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">機型：</label>
-                            <select id="stockOutModel" required
-                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;">
-                                <option value="">請選擇機型</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">鑄造商：</label>
-                            <select id="stockOutSupplier"
-                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;">
-                                <option value="">請選擇鑄造商 (選填)</option>
-                                <option value="正鋒(CFC)">正鋒(CFC)</option>
-                                <option value="永棧(LD)">永棧(LD)</option>
-                                <option value="光隆(KL)">光隆(KL)</option>
-                                <option value="世聯(SL)">世聯(SL)</option>
-                                <option value="久源(CY)">久源(CY)</option>
-                            </select>
+                            <input type="text" id="stockOutModel" list="stockOutModelList" required autocomplete="off"
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
+                                placeholder="請點擊輸入或搜尋機型...">
+                            <datalist id="stockOutModelList"></datalist>
                         </div>
                         <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">工單號碼：</label>
-                            <select id="stockOutWorkOrder" required
-                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;">
-                                <option value="">載入中...</option>
-                            </select>
+                            <input type="text" id="stockOutWorkOrder" list="stockOutWorkOrderList" required autocomplete="off"
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
+                                placeholder="載入中...">
+                            <datalist id="stockOutWorkOrderList"></datalist>
                         </div>
                         <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">採購編號
@@ -1081,6 +1179,9 @@
         const isAdmin = {{ 'true' if is_admin else 'false' }};
         const isLoggedIn = {{ 'true' if is_logged_in else 'false' }};
 
+        console.log(`[SYSTEM] Casting Tracking Loaded - Part: ${partName}, Admin: ${isAdmin}`);
+        console.log(`[SYSTEM] Feature: Cell History Details (WO/PO Modal) initialized.`);
+
         document.addEventListener('DOMContentLoaded', function () {
             // 條碼輸入框 Enter 處理
             const barcodeInput = document.getElementById('stockInBarcode');
@@ -1096,8 +1197,40 @@
             }
         });
 
-        // 自動計算總數
         document.addEventListener('DOMContentLoaded', function () {
+            // 動態計算 Sticky 元素的高度位置，以防止任何重疊問題
+            function updateStickyPositions() {
+                const header = document.querySelector('.header');
+                const subheader = document.querySelector('.subheader');
+                const searchBar = document.getElementById('searchBarContainer');
+                const tableHeaders = document.querySelectorAll('.edit-table th');
+                
+                if (!header || !subheader) return;
+                
+                // 取得實際上各元素的渲染高度
+                const hHeight = header.getBoundingClientRect().height;
+                subheader.style.top = hHeight + 'px';
+                
+                if (searchBar) {
+                    const sHeight = subheader.getBoundingClientRect().height;
+                    searchBar.style.top = (hHeight + sHeight) + 'px';
+                    
+                    if (tableHeaders.length > 0) {
+                        const sbHeight = searchBar.getBoundingClientRect().height;
+                        const totalTop = hHeight + sHeight + sbHeight;
+                        tableHeaders.forEach(th => {
+                            th.style.top = totalTop + 'px';
+                        });
+                    }
+                }
+            }
+            
+            // 初始化及監聽各種版面更動事件
+            updateStickyPositions();
+            window.addEventListener('resize', updateStickyPositions);
+            setTimeout(updateStickyPositions, 200);
+            setTimeout(updateStickyPositions, 1000);
+
             const tableBody = document.getElementById('editTableBody');
             if (tableBody) {
                 // 為所有輸入框添加事件監聽
@@ -1338,24 +1471,26 @@
                                 <div style="font-size: 1.5rem; font-weight: bold; color: #8b5cf6;">${data.summary.stock}</div>
                             </div>
                             <div style="background: #f3f4f6; padding: 1rem; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 0.8rem; color: #666;">總需求量</div>
+                                <div style="font-size: 0.8rem; color: #666;">需求總量</div>
                                 <div style="font-size: 1.5rem; font-weight: bold; color: #333;">${data.summary.total_demand}</div>
                             </div>
-                            <div style="background: #fef2f2; padding: 1rem; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 0.8rem; color: #666;">待領總數</div>
-                                <div style="font-size: 1.5rem; font-weight: bold; color: #ef4444;">${data.summary.total_pending}</div>
-                            </div>
                             <div style="background: #ecfdf5; padding: 1rem; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 0.8rem; color: #666;">分配後剩餘</div>
-                                <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;">${data.summary.remaining_stock}</div>
+                                <div style="font-size: 0.8rem; color: #666;">已領總數</div>
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;">${data.summary.total_demand - data.summary.total_pending}</div>
+                            </div>
+                            <div style="background: #fef2f2; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.8rem; color: #666;">未結案總數</div>
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #ef4444;">${data.summary.total_pending}</div>
                             </div>
                         `;
 
                     // 填充表格
-                    if (data.allocation.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">目前無相關工單需求</td></tr>';
+                    const unclosedAllocation = data.allocation.filter(item => item.待領數量 > 0);
+                    
+                    if (unclosedAllocation.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #999;">目前無未結案工單需求</td></tr>';
                     } else {
-                        tableBody.innerHTML = data.allocation.map(item => {
+                        tableBody.innerHTML = unclosedAllocation.map(item => {
                             let statusColor = '#999';
                             if (item.分配狀態 === '完全分配') statusColor = '#10b981';
                             else if (item.分配狀態 === '部分分配') statusColor = '#fbbf24';
@@ -1366,8 +1501,8 @@
                                         <td style="font-weight: bold;">${item.工單號碼}</td>
                                         <td>${item.客戶名稱}</td>
                                         <td>${item.需求數量}</td>
-                                        <td>${item.待領數量}</td>
-                                        <td style="font-weight: bold; color: #8b5cf6;">${item.分配數量}</td>
+                                        <td>${item.已領料}</td>
+                                        <td style="font-weight: bold; color: #ef4444;">${item.待領數量}</td>
                                         <td>${item.生產開始 || '-'}</td>
                                         <td><span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">${item.分配狀態}</span></td>
                                     </tr>
@@ -1382,6 +1517,145 @@
 
         function closeAllocationModal() {
             document.getElementById('allocationModal').style.display = 'none';
+        }
+
+        // --- 儲存格細節 (PO/WO) 相關函式 ---
+        function showCellHistory(itemId, field, modelName) {
+            const modal = document.getElementById('cellHistoryModal');
+            const title = document.getElementById('cellHistoryTitle');
+            const info = document.getElementById('cellHistoryInfo');
+            const tableBody = document.getElementById('cellHistoryTableBody');
+
+            modal.classList.add('active');
+            info.innerHTML = `<strong>${modelName}</strong> - <strong>${field}</strong> 的最近異動記錄`;
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">載入中...</td></tr>';
+
+            const encodedPartName = encodeURIComponent(partName);
+            const encodedItemId = encodeURIComponent(itemId);
+            
+            fetch(`/api/inventory/history/${encodedPartName}/${encodedItemId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.history || data.history.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #999;">目前無此格的相關異動記錄</td></tr>';
+                        return;
+                    }
+
+                    // 過濾該欄位的歷史 (包含如果是入庫/出庫，欄位名稱會包含在括號內)
+                    const filtered = data.history.filter(h => {
+                        return h.field === field || h.field.startsWith(field + ' (');
+                    });
+
+                    if (filtered.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #999;">目前無此格的相關異動記錄</td></tr>';
+                        return;
+                    }
+
+                    tableBody.innerHTML = filtered.map(h => {
+                        const oldVal = h.old_value ?? 0;
+                        const newVal = h.new_value ?? 0;
+                        const diff = newVal - oldVal;
+                        const action = diff > 0 ? `<span class="badge-in">入庫</span>` : `<span class="badge-out">出庫</span>`;
+                        
+                        return `
+                            <tr data-part="${encodedPartName}" data-item="${h.item_id}" data-time="${h.timestamp}" data-field="${h.field}">
+                                <td style="font-size: 0.8rem;">${h.timestamp.split(' ')[0]}<br>${h.timestamp.split(' ')[1]}</td>
+                                <td>${action}</td>
+                                <td style="font-weight: bold; color: ${diff > 0 ? '#10b981' : '#ef4444'};">${diff > 0 ? '+' : ''}${diff}</td>
+                                <td class="note-cell" style="font-size: 0.85rem; text-align: left;">
+                                    <div class="note-content-wrapper" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                        <span class="note-text">${h.note || '-'}</span>
+                                        ${isLoggedIn ? `<button class="edit-note-btn" onclick="startEditNote(this)" title="編輯備註">✏️</button>` : ''}
+                                    </div>
+                                </td>
+                                <td>${h.user}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                })
+                .catch(err => {
+                    console.error('Failed to load cell details:', err);
+                    tableBody.innerHTML = `<tr><td colspan="5" style="color: red; text-align: center; padding: 1rem;">載入失敗: ${err.message}</td></tr>`;
+                });
+        }
+
+        function closeCellHistoryModal() {
+            document.getElementById('cellHistoryModal').classList.remove('active');
+        }
+
+        // --- 歷史紀錄編輯功能 ---
+        function startEditNote(btn) {
+            const wrapper = btn.closest('.note-content-wrapper');
+            const noteText = wrapper.querySelector('.note-text').textContent;
+            const currentNote = noteText === '-' ? '' : noteText;
+            
+            wrapper.innerHTML = `
+                <input type="text" class="history-note-input" value="${currentNote.replace(/"/g, '&quot;')}" onkeydown="handleNoteKey(event, this)">
+                <div style="display: flex; gap: 4px; margin-left: 4px;">
+                    <button onclick="saveHistoryNote(this)" style="background: #10b981; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer;">✅</button>
+                    <button onclick="cancelEditNote(this, '${currentNote.replace(/'/g, "\\'")}')" style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer;">✕</button>
+                </div>
+            `;
+            wrapper.querySelector('input').focus();
+        }
+
+        function handleNoteKey(e, input) {
+            if (e.key === 'Enter') {
+                saveHistoryNote(input.nextElementSibling.querySelector('button'));
+            } else if (e.key === 'Escape') {
+                const cancelBtn = input.nextElementSibling.querySelectorAll('button')[1];
+                cancelBtn.click();
+            }
+        }
+
+        function cancelEditNote(btn, originalNote) {
+            const wrapper = btn.closest('.note-content-wrapper');
+            wrapper.innerHTML = `
+                <span class="note-text">${originalNote || '-'}</span>
+                <button class="edit-note-btn" onclick="startEditNote(this)" title="編輯備註">✏️</button>
+            `;
+        }
+
+        function saveHistoryNote(btn) {
+            const wrapper = btn.closest('.note-content-wrapper');
+            const input = wrapper.querySelector('input');
+            const tr = btn.closest('tr');
+            const newNote = input.value.trim();
+            
+            const data = {
+                part: decodeURIComponent(tr.dataset.part),
+                item_id: tr.dataset.item,
+                timestamp: tr.dataset.time,
+                field: tr.dataset.field,
+                new_note: newNote
+            };
+
+            btn.disabled = true;
+            btn.textContent = '...';
+
+            fetch('/api/inventory/history/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.success) {
+                    wrapper.innerHTML = `
+                        <span class="note-text">${newNote || '-'}</span>
+                        <button class="edit-note-btn" onclick="startEditNote(this)" title="編輯備註">✏️</button>
+                    `;
+                } else {
+                    alert('更新失敗: ' + (res.error || '不明錯誤'));
+                    btn.disabled = false;
+                    btn.textContent = '✅';
+                }
+            })
+            .catch(err => {
+                alert('連線失敗: ' + err.message);
+                btn.disabled = false;
+                btn.textContent = '✅';
+            });
         }
 
         // 顯示履歷彈出視窗
@@ -1510,9 +1784,12 @@
                 });
             }
 
-            // 填充機型選項（品號 - 機型名稱）
-            modelSelect.innerHTML = '<option value="">請選擇機型</option>' +
-                models.map(m => `<option value="${m.partNo}">${m.display}</option>`).join('');
+            // 填充機型 datalist
+            const stockInModelList = document.getElementById('stockInModelList');
+            document.getElementById('stockInModel').value = '';
+            if (stockInModelList) {
+                stockInModelList.innerHTML = models.map(m => `<option value="${m.display}">`).join('');
+            }
         }
 
         function closeStockInModal() {
@@ -1525,7 +1802,10 @@
         document.getElementById('stockInForm').addEventListener('submit', function (e) {
             e.preventDefault();
 
-            const model = document.getElementById('stockInModel').value;
+            let model = document.getElementById('stockInModel').value;
+            if (model && model.includes(' - ')) {
+                model = model.split(' - ')[0].trim();
+            }
             const supplier = document.getElementById('stockInSupplier').value;
             const quantity = parseInt(document.getElementById('stockInQuantity').value);
             const workOrderCode = document.getElementById('stockInWorkOrderCode').value.trim();
@@ -1601,13 +1881,24 @@
                 });
             }
 
-            // 填充機型選項
-            modelSelect.innerHTML = '<option value="">請選擇機型</option>' +
-                models.map(m => `<option value="${m.partNo}">${m.display}</option>`).join('');
+            // 填充機型 datalist
+            const stockOutModelList = document.getElementById('stockOutModelList');
+            document.getElementById('stockOutModel').value = '';
+            if (stockOutModelList) {
+                stockOutModelList.innerHTML = models.map(m => `<option value="${m.display}">`).join('');
+            }
 
             // 載入工單選項 (過濾已完成)
-            const woSelect = document.getElementById('stockOutWorkOrder');
-            woSelect.innerHTML = '<option value="">載入中...</option>';
+            const woInput = document.getElementById('stockOutWorkOrder');
+            const woList = document.getElementById('stockOutWorkOrderList');
+            if (woInput) {
+                woInput.value = '';
+                woInput.placeholder = '載入中...';
+            }
+            if (woList) {
+                woList.innerHTML = '';
+            }
+
             fetch('/api/orders')
                 .then(res => res.json())
                 .then(data => {
@@ -1622,14 +1913,16 @@
                         return dateA - dateB;
                     });
 
-                    woSelect.innerHTML = '<option value="">請選擇工單號碼</option>' +
-                        activeOrders.map(o => {
+                    if (woInput) woInput.placeholder = '請點擊輸入或搜尋工單號碼...';
+                    if (woList) {
+                        woList.innerHTML = activeOrders.map(o => {
                             const desc = o.品號說明 ? o.品號說明.substring(0, 15) : '';
-                            return `<option value="${o.工單}">${o.工單} ${desc ? ' - ' + desc : ''}</option>`;
+                            return `<option value="${o.工單}${desc ? ' - ' + desc : ''}">`;
                         }).join('');
+                    }
                 })
                 .catch(err => {
-                    woSelect.innerHTML = '<option value="">載入失敗</option>';
+                    if (woInput) woInput.placeholder = '載入失敗';
                     console.error('Error loading orders:', err);
                 });
         }
@@ -1644,8 +1937,14 @@
         document.getElementById('stockOutForm').addEventListener('submit', function (e) {
             e.preventDefault();
 
-            const model = document.getElementById('stockOutModel').value;
-            const workOrder = document.getElementById('stockOutWorkOrder').value;
+            let model = document.getElementById('stockOutModel').value;
+            if (model && model.includes(' - ')) {
+                model = model.split(' - ')[0].trim();
+            }
+            let workOrder = document.getElementById('stockOutWorkOrder').value;
+            if (workOrder && workOrder.includes(' - ')) {
+                workOrder = workOrder.split(' - ')[0].trim();
+            }
             const purchaseOrder = document.getElementById('stockOutPurchaseOrder').value;
             const quantity = parseInt(document.getElementById('stockOutQuantity').value);
 
@@ -1662,8 +1961,7 @@
                     model: model,
                     work_order: workOrder.trim(),
                     purchase_order: purchaseOrder ? purchaseOrder.trim() : '',
-                    quantity: quantity,
-                    supplier: document.getElementById('stockOutSupplier').value // 新增鑄造商欄位
+                    quantity: quantity
                 })
             })
                 .then(r => r.json())
@@ -1738,7 +2036,7 @@
             const keyword = document.getElementById('sqFilterKeyword').value.trim();
 
             const tbody = document.getElementById('stockHistoryTableBody');
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem;">查詢中...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem;">查詢中...</td></tr>';
 
             // 組合 API URL
             const params = new URLSearchParams();
@@ -1752,7 +2050,7 @@
                 .then(res => res.json())
                 .then(data => {
                     if (!data.success) {
-                        tbody.innerHTML = `<tr><td colspan="9" style="color: #ef4444; text-align: center; padding: 2rem;">❌ 查詢失敗：${data.error || '未知錯誤'}</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="8" style="color: #ef4444; text-align: center; padding: 2rem;">❌ 查詢失敗：${data.error || '未知錯誤'}</td></tr>`;
                         return;
                     }
 
@@ -1764,7 +2062,7 @@
                     // 渲染表格
                     if (data.records.length === 0) {
                         tbody.innerHTML = `
-                            <tr><td colspan="9" class="stock-history-empty">
+                            <tr><td colspan="8" class="stock-history-empty">
                                 <div class="empty-icon">📭</div>
                                 <div>沒有找到符合條件的記錄</div>
                             </td></tr>`;
@@ -1794,7 +2092,6 @@
                                     ${r.model}<br>
                                     <small style="opacity: 0.7; font-weight: 400;">${r.item_id}</small>
                                 </td>
-                                <td style="color: var(--accent-cyan);">${r.supplier || '-'}</td>
                                 <td style="font-family: monospace; font-size: 0.9rem;">${r.order_code || '-'}</td>
                                 <td style="font-weight: 700; font-size: 1.1rem; color: var(--text-primary);">${r.quantity}</td>
                                 <td style="color: ${r.operation === '入庫' ? '#10b981' : '#ef4444'}; font-size: 0.9rem;">
@@ -1806,7 +2103,7 @@
                     }).join('');
                 })
                 .catch(err => {
-                    tbody.innerHTML = `<tr><td colspan="9" style="color: #ef4444; text-align: center; padding: 2rem;">❌ 網路錯誤：${err.message}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="8" style="color: #ef4444; text-align: center; padding: 2rem;">❌ 網路錯誤：${err.message}</td></tr>`;
                 });
         }
 

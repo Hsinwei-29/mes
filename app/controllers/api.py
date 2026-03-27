@@ -410,6 +410,28 @@ def api_item_history(part_type, item_id):
     history = get_item_history(part_type, item_id)
     return jsonify({'history': history, 'item_id': item_id})
 
+@api_bp.route('/inventory/history/update', methods=['POST'])
+@login_required
+def api_update_history_note():
+    """更新歷程紀錄中的備註 (限登入者)"""
+    data = request.get_json()
+    part = data.get('part')
+    item_id = data.get('item_id')
+    timestamp = data.get('timestamp')
+    field = data.get('field')
+    new_note = data.get('new_note')
+    
+    if not all([part, item_id, timestamp, field]):
+        return jsonify({'success': False, 'error': '缺少必要參數'}), 400
+        
+    from ..models.inventory import update_history_note
+    success = update_history_note(part, item_id, timestamp, field, new_note)
+    
+    if success:
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False, 'error': '更新失敗，找不到紀錄'}), 404
+
 @api_bp.route('/inventory/history/stats/<part_type>')
 def api_history_stats(part_type):
     """取得歷程統計資訊"""

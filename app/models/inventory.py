@@ -60,30 +60,26 @@ def _get_master_model_list(xl=None):
             # 使用更快的 calamine 引擎
             xl = pd.ExcelFile(casting_file, engine='calamine')
 
-        all_models = set()
+        all_models = {}
 
-        # 從四個零件分頁收集所有機型
+        # 從四個零件分頁收集所有機型，保留 Excel 原有的顯示順序
         for sheet_name, sheet_idx in [('底座', 1), ('工作台', 2), ('橫樑', 3), ('立柱', 4)]:
             try:
                 df = pd.read_excel(xl, sheet_name=sheet_idx)
                 # 機型通常在第二欄（index 1）
                 if len(df.columns) > 1:
                     model_col = df.columns[1]
+                    # unique() 會依序回傳遇到的元素，因此能保留 Excel 當中出現的上下順序
                     models = df[model_col].dropna().unique()
                     for m in models:
                         model_str = str(m).strip()
-                        if model_str and model_str != 'nan':
-                            all_models.add(model_str)
+                        if model_str and model_str != 'nan' and model_str != '品號':
+                            all_models[model_str] = True
             except Exception as e:
                 print(f"Error reading {sheet_name}: {e}")
 
-        # 智能排序：先按標準化名稱分組，再按原始名稱排序
-        def sort_key(model_name):
-            normalized = normalize_model_name(model_name)
-            normalized_no_dash = normalized.replace('-', '').replace('_', '')
-            return (normalized_no_dash, model_name)
-
-        result = sorted(list(all_models), key=sort_key)
+        # 取代智能排序，這裡直接讓它乖乖照著 Excel 原有的順序
+        result = list(all_models.keys())
 
         # 更新快取
         _MASTER_MODEL_CACHE['mtime'] = mtime
@@ -285,11 +281,46 @@ def load_casting_inventory():
         except:
             pass
             
+        
         return result
 
     except Exception as e:
         print(f"Error loading casting inventory: {e}")
         return {'summary': {}, 'semi_finished': {}, 'finished': {}, 'details': [], 'all_models': {}, 'error': str(e)}
+
+def update_history_note(part, item_id, timestamp, field, new_note):
+    """更新歷史紀錄中的備註資訊"""
+    try:
+        log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs', 'edit_history.json')
+        
+        if not os.path.exists(log_file):
+            return False
+        
+        with open(log_file, 'r', encoding='utf-8') as f:
+            history = json.load(f)
+        
+        updated = False
+        for h in history:
+            # 使用 part, item_id, timestamp, field 作為複合鍵尋找紀錄
+            if (h.get('part') == part and 
+                str(h.get('item_id')) == str(item_id) and 
+                h.get('timestamp') == timestamp and 
+                h.get('field') == field):
+                
+                h['note'] = new_note
+                updated = True
+                break
+        
+        if updated:
+            with open(log_file, 'w', encoding='utf-8') as f:
+                json.dump(history, f, ensure_ascii=False, indent=2)
+            return True
+            
+        return False
+    
+    except Exception as e:
+        print(f"Error updating history note: {e}")
+        return False
 
 def get_zero_inventory_models():
     """獲取總數為0的機型列表（庫存警示）"""
@@ -346,28 +377,28 @@ def get_part_details(part_type):
             model_name = str(row.iloc[1]).strip()
             existing_rows[model_name] = row
 
-        # 取得完整機型清單（保留原始名稱）
-        master_models = _get_master_model_list()
-        
         def to_int(val):
             try: 
                 return int(float(val)) if pd.notna(val) else 0
             except: 
                 return 0
-        
-        rows = []
-        for model_name in master_models:
-            # 只顯示在 Excel 中有品號的機型
-            if model_name in existing_rows:
-                row = existing_rows[model_name]
-                part_number = str(row.iloc[0])
                 
-                # 跳過品號為空或 N/A 的機型
-                if part_number and part_number not in ['nan', 'N/A', '']:
-                    data_row = {'機型': model_name, '品號': part_number}
-                    for label, idx in config:
-                        data_row[label] = to_int(row.iloc[idx])
-                    rows.append(data_row)
+        rows = []
+        for model_name, row in existing_rows.items():
+            part_number = str(row.iloc[0]).strip()
+            
+            # 處理浮點數被轉成字串的 .0 尾巴 (例如 "12345.0" -> "12345")
+            if part_number.endswith('.0'):
+                part_number = part_number[:-2]
+            
+            # 若品號為空、nan 或 N/A，改回空字串，但不跳過該機型
+            if part_number in ['nan', 'N/A', 'None']:
+                part_number = ''
+                
+            data_row = {'機型': model_name, '品號': part_number}
+            for label, idx in config:
+                data_row[label] = to_int(row.iloc[idx])
+            rows.append(data_row)
             
         return {"headers": headers, "rows": rows}
     except Exception as e:
@@ -408,8 +439,13 @@ def update_cell(part_type, item_id, field, new_value, user_id, model_name=None):
         # 方式1: 依品號搜尋 (僅當 item_id 不是 'N/A' 時)
         if item_id and item_id != 'N/A':
             for row_num in range(2, ws.max_row + 1):
-                cell_value = ws.cell(row=row_num, column=1).value
-                if str(cell_value) == str(item_id):
+                cell_value = str(ws.cell(row=row_num, column=1).value).strip()
+                if cell_value.endswith('.0'): cell_value = cell_value[:-2]
+                
+                check_id = str(item_id).strip()
+                if check_id.endswith('.0'): check_id = check_id[:-2]
+                
+                if cell_value == check_id:
                     target_row = row_num
                     break
         

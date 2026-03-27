@@ -43,8 +43,24 @@ def load_lifting_inventory():
     if _LIFTING_CACHE['mtime'] == current_mtime and _LIFTING_CACHE['data']:
         return _LIFTING_CACHE['data']
 
+    # 嘗試讀取持久化快取
+    cache_dir = os.path.join(os.getcwd(), 'app', 'cache')
+    os.makedirs(cache_dir, exist_ok=True)
+    cache_file = os.path.join(cache_dir, 'lifting_cache.pkl')
+    if os.path.exists(cache_file):
+        try:
+            import pickle
+            with open(cache_file, 'rb') as f:
+                cached = pickle.load(f)
+            if cached.get('mtime') == current_mtime:
+                _LIFTING_CACHE['mtime'] = current_mtime
+                _LIFTING_CACHE['data'] = cached['data']
+                return cached['data']
+        except:
+            pass
+
     try:
-        xl = pd.ExcelFile(file_path)
+        xl = pd.ExcelFile(file_path, engine='calamine')
         data = {}
         
         # 輔助：放置位置排序關鍵值
@@ -101,6 +117,14 @@ def load_lifting_inventory():
                 
         _LIFTING_CACHE['mtime'] = current_mtime
         _LIFTING_CACHE['data'] = data
+        
+        try:
+            import pickle
+            with open(cache_file, 'wb') as f:
+                pickle.dump({'mtime': current_mtime, 'data': data}, f)
+        except:
+            pass
+            
         return data
     except Exception as e:
         print(f"Error loading lifting inventory: {e}")

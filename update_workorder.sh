@@ -9,7 +9,7 @@ MES_DIR="/home/hsinwei/app/mes"
 TARGET_FILE="$MES_DIR/工單總表2026.xls"
 BACKUP_DIR="$MES_DIR/workorder_backup"
 LOG_FILE="$MES_DIR/logs/workorder_update.log"
-DOWNLOAD_URL="http://eip.hartford.com.tw/DocLib1/%E5%B7%A5%E5%96%AE%E7%B8%BD%E8%A1%A82026.xls"
+DOWNLOAD_URL="http://192.168.1.34/DocLib1/%E5%B7%A5%E5%96%AE%E7%B8%BD%E8%A1%A82026.xls"
 TEMP_FILE="/tmp/workorder_temp_$$.xls"
 
 # 確保目錄存在

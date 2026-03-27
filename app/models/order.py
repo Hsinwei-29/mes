@@ -38,9 +38,17 @@ def get_picking_data():
     try:
         api_url = current_app.config.get('PICKING_API_URL', 'http://192.168.6.119:5002/api/finished_materials')
         
+        from datetime import datetime, timedelta
+        
         # 使用雜湊或時間標記作為 mtime
-        # 每 5 分鐘強制刷新的標記
-        current_time_tag = datetime.now().strftime('%Y%m%d%H%M')[:11] # 每10分鐘或更少
+        # 每天早上 9:00 及下午 5:00 (17:00) 進行更新
+        now = datetime.now()
+        if now.hour >= 17:
+            current_time_tag = now.strftime('%Y%m%d_1700')
+        elif now.hour >= 9:
+            current_time_tag = now.strftime('%Y%m%d_0900')
+        else:
+            current_time_tag = (now - timedelta(days=1)).strftime('%Y%m%d_1700')
         
         # 內部的變數快取仍有效，直接回傳
         if PICKING_CACHE['mtime'] == current_time_tag and PICKING_CACHE['data'] is not None:

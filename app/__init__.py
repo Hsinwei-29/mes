@@ -54,7 +54,6 @@ def create_app(config_name='default'):
     def _warmup_cache():
         """伺服器啟動後在背景預先載入所有耗時資料，讓第一次使用者請求秒回。"""
         import time
-        time.sleep(1)  # 等 Flask 完全啟動
         with app.app_context():
             try:
                 t0 = time.time()
@@ -71,6 +70,10 @@ def create_app(config_name='default'):
                 calculate_shortage()
                 print(f"[WARMUP] shortage OK ({(time.time()-t0)*1000:.0f} ms)")
 
+                from app.models.lifting import load_lifting_inventory
+                load_lifting_inventory()
+                print(f"[WARMUP] lifting OK ({(time.time()-t0)*1000:.0f} ms)")
+
                 print(f"[WARMUP] 快取預熱完成，總耗時 {(time.time()-t0)*1000:.0f} ms")
             except Exception as e:
                 print(f"[WARMUP] 預熱失敗: {e}")
@@ -78,6 +81,34 @@ def create_app(config_name='default'):
     import threading
     _t = threading.Thread(target=_warmup_cache, daemon=True, name="cache-warmup")
     _t.start()
+
+    # ── 背景定時更新快取 (每天 09:00 與 17:00) ──────────────────────
+    def _schedule_daily_updates():
+        import time
+        from datetime import datetime
+        last_run_tag = None
+        while True:
+            try:
+                now = datetime.now()
+                # 判斷是否在 09:00~09:05 或 17:00~17:05 之間觸發
+                # (容錯 5 分鐘，避免剛好錯過 0 分)
+                if (now.hour == 9 or now.hour == 17) and now.minute < 5:
+                    run_tag = now.strftime('%Y%m%d_%H')
+                    if last_run_tag != run_tag:
+                        with app.app_context():
+                            print(f"[SCHEDULE] 執行每日定時更新缺料與工單系統 ({run_tag})...")
+                            from app.models.order import load_orders
+                            from app.models.shortage import calculate_shortage
+                            load_orders()
+                            calculate_shortage()
+                            print(f"[SCHEDULE] 定時更新完成。")
+                        last_run_tag = run_tag
+            except Exception as e:
+                print(f"[SCHEDULE] 排程錯誤: {e}")
+            time.sleep(60)
+
+    _t_sched = threading.Thread(target=_schedule_daily_updates, daemon=True, name="daily-schedule")
+    _t_sched.start()
     # ────────────────────────────────────────────────────────────────
 
     return app
