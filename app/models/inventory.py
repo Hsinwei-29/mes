@@ -57,28 +57,46 @@ def _get_master_model_list(xl=None):
                 pass
 
         if xl is None:
-            # 使用更快的 calamine 引擎
-            xl = pd.ExcelFile(casting_file, engine='calamine')
+            # 使用更穩定的 openpyxl 引擎
+            xl = pd.ExcelFile(casting_file, engine='openpyxl')
 
         all_models = {}
 
-        # 從四個零件分頁收集所有機型，保留 Excel 原有的顯示順序
-        for sheet_name, sheet_idx in [('底座', 1), ('工作台', 2), ('橫樑', 3), ('立柱', 4)]:
+        # 優先從第一個分頁「總數」(index 0) 抓取機型順序
+        try:
+            df_summary = pd.read_excel(xl, sheet_name=0)
+            if not df_summary.empty:
+                # 假設機型在第一欄或名為「機型」的欄位
+                model_col = '機型' if '機型' in df_summary.columns else df_summary.columns[0]
+                models = df_summary[model_col].dropna().unique()
+                for m in models:
+                    model_str = str(m).strip()
+                    if 'VW-X340' in model_str:
+                        continue
+                    if model_str and model_str not in ['nan', '品號', '機型']:
+                        all_models[model_str] = True
+        except Exception as e:
+            print(f"Error reading Summary sheet: {e}")
+
+        # 如果總數分頁沒抓到，再從其他零件分頁補充 (確保不遺漏)
+        for sheet_name, sheet_idx in [('底座', 1), ('工作台', 2), ('橫樑', 3), ('立柱', 4), ('定樑', 7)]:
             try:
                 df = pd.read_excel(xl, sheet_name=sheet_idx)
-                # 機型通常在第二欄（index 1）
                 if len(df.columns) > 1:
                     model_col = df.columns[1]
-                    # unique() 會依序回傳遇到的元素，因此能保留 Excel 當中出現的上下順序
                     models = df[model_col].dropna().unique()
                     for m in models:
                         model_str = str(m).strip()
-                        if model_str and model_str != 'nan' and model_str != '品號':
+                        # 排除特定不正確的項目
+                        if 'VW-X340' in model_str:
+                            continue
+                            
+                        if model_str and model_str not in all_models and model_str not in ['nan', '品號', '機型']:
                             all_models[model_str] = True
             except Exception as e:
                 print(f"Error reading {sheet_name}: {e}")
 
-        # 取代智能排序，這裡直接讓它乖乖照著 Excel 原有的順序
+        # 直接照著收集到的順序回傳
         result = list(all_models.keys())
 
         # 更新快取
@@ -122,8 +140,8 @@ def load_casting_inventory():
             except:
                 pass
 
-        # 使用更快的 calamine 引擎 
-        xl = pd.ExcelFile(casting_file, engine='calamine')
+        # 使用更穩定的 openpyxl 引擎 
+        xl = pd.ExcelFile(casting_file, engine='openpyxl')
 
         
         # 從各個鑄件工作表計算總數
@@ -135,24 +153,26 @@ def load_casting_inventory():
         # 定義半品和成品的欄位映射
         semi_finished_fields = {
             '底座': ['素材', 'M4', 'M3'],
-            '工作台': ['素材', 'W1', 'W2', 'W3', 'W4'],
+            '工作台': ['素材', 'W1', 'W2', 'W4'],
             '橫樑': ['素材', 'M6', 'M5'],
-            '立柱': ['素材', '半品', '成品銑工']
+            '立柱': ['素材', '半品', '成品銑工'],
+            '定樑': ['素材']
         }
         
         finished_fields = {
             '底座': ['成品研磨'],
             '工作台': ['成品'],
             '橫樑': ['成品研磨'],
-            '立柱': ['成品研磨']
+            '立柱': ['成品研磨'],
+            '定樑': ['成品']
         }
 
         # 1. 建立完整機型清單（從所有零件分頁收集）
         master_models = _get_master_model_list(xl=xl)
         for model_str in master_models:
-            all_models[model_str] = {'機型': model_str, '工作台': 0, '底座': 0, '橫樑': 0, '立柱': 0}
+            all_models[model_str] = {'機型': model_str, '底座': 0, '工作台': 0, '橫樑': 0, '立柱': 0, '定樑': 0}
         
-        for part_name, sheet_idx in [('底座', 1), ('工作台', 2), ('橫樑', 3), ('立柱', 4)]:
+        for part_name, sheet_idx in [('底座', 1), ('工作台', 2), ('橫樑', 3), ('立柱', 4), ('定樑', 7)]:
             try:
                 df = pd.read_excel(xl, sheet_name=sheet_idx)
                 
@@ -178,7 +198,7 @@ def load_casting_inventory():
                             
                             # 初始化該機型的數據
                             if model_str not in all_models:
-                                all_models[model_str] = {'機型': model_str, '工作台': 0, '底座': 0, '橫樑': 0, '立柱': 0}
+                                all_models[model_str] = {'機型': model_str, '底座': 0, '工作台': 0, '橫樑': 0, '立柱': 0, '定樑': 0}
                             
                             # 加總所有製程欄位的數量
                             row_total = 0
@@ -227,40 +247,22 @@ def load_casting_inventory():
                             part_semi += row_semi
                             part_finished += row_finished
                 
-                # 設定該料件的總庫存
+                # 儲存該料件的加總結果
                 inventory[part_name] = part_total
                 semi_finished[part_name] = part_semi
                 finished[part_name] = part_finished
                 
             except Exception as e:
-                print(f"Error loading {part_name}: {e}")
-                inventory[part_name] = 0
-                semi_finished[part_name] = 0
-                finished[part_name] = 0
+                print(f"Error reading {part_name} details: {e}")
         
-        # 確保順序：工作台、底座、橫樑、立柱
-        inventory = {
-            '工作台': inventory.get('工作台', 0),
-            '底座': inventory.get('底座', 0),
-            '橫樑': inventory.get('橫樑', 0),
-            '立柱': inventory.get('立柱', 0)
-        }
+        # 確保順序：底座、工作台、橫樑、立柱
+        PART_ORDER = ['底座', '工作台', '橫樑', '立柱', '定樑']
         
-        semi_finished = {
-            '工作台': semi_finished.get('工作台', 0),
-            '底座': semi_finished.get('底座', 0),
-            '橫樑': semi_finished.get('橫樑', 0),
-            '立柱': semi_finished.get('立柱', 0)
-        }
+        inventory = { k: inventory.get(k, 0) for k in PART_ORDER }
+        semi_finished = { k: semi_finished.get(k, 0) for k in PART_ORDER }
+        finished = { k: finished.get(k, 0) for k in PART_ORDER }
         
-        finished = {
-            '工作台': finished.get('工作台', 0),
-            '底座': finished.get('底座', 0),
-            '橫樑': finished.get('橫樑', 0),
-            '立柱': finished.get('立柱', 0)
-        }
-        
-        # 轉換機型數據為列表 (包含零庫存機型)
+        # 轉換機型數據為列表 (包含零庫存機型)，保留原本 Excel 中的順序
         details = list(all_models.values())
         
         result = {
@@ -331,15 +333,17 @@ def get_zero_inventory_models():
         # 找出總數為0的機型
         zero_models = []
         for model_str, model_data in all_models.items():
-            total = sum(model_data.get(part, 0) for part in ['工作台', '底座', '橫樑', '立柱'])
+            total = sum(model_data.get(part, 0) for part in ['底座', '工作台', '橫樑', '立柱', '定樑'])
             if total == 0:
-                zero_models.append({
+                append_data = {
                     '機型': model_str,
-                    '工作台': model_data.get('工作台', 0),
                     '底座': model_data.get('底座', 0),
+                    '工作台': model_data.get('工作台', 0),
                     '橫樑': model_data.get('橫樑', 0),
-                    '立柱': model_data.get('立柱', 0)
-                })
+                    '立柱': model_data.get('立柱', 0),
+                    '定樑': model_data.get('定樑', 0)
+                }
+                zero_models.append(append_data)
         
         return zero_models
     except Exception as e:
@@ -350,12 +354,13 @@ def get_zero_inventory_models():
 # 欄位配置 (全域，供多個函式使用)
 CONFIGS = {
     '底座': [('素材', 2), ('M4', 3), ('M3', 4), ('成品研磨', 5), ('總數', 7)],
-    '工作台': [('素材', 2), ('W1', 3), ('W2', 4), ('W3', 5), ('W4', 6), ('成品', 7), ('總數', 9)],
+    '工作台': [('素材', 2), ('W1', 3), ('W2', 4), ('W4', 5), ('成品', 6), ('總數', 8)],
     '橫樑': [('素材', 2), ('M6', 4), ('M5', 5), ('成品研磨', 6), ('總數', 8)],
-    '立柱': [('素材', 2), ('半品', 3), ('成品銑工', 4), ('成品研磨', 5), ('總數', 6)]
+    '立柱': [('素材', 2), ('半品', 3), ('成品銑工', 4), ('成品研磨', 5), ('總數', 6)],
+    '定樑': [('素材', 2), ('成品', 3), ('總數', 4)]
 }
 
-SHEET_MAP = {'底座': 1, '工作台': 2, '橫樑': 3, '立柱': 4}
+SHEET_MAP = {'底座': 1, '工作台': 2, '橫樑': 3, '立柱': 4, '定樑': 7}
 
 def get_part_details(part_type):
     """載入特定鑄件的詳細製程資料 (顯示所有原始機型名稱)"""
@@ -370,12 +375,11 @@ def get_part_details(part_type):
         df = pd.read_excel(casting_file, sheet_name=sheet_idx)
         
         # 建立現有數據索引
-        existing_rows = {}
+        existing_rows = []
         for _, row in df.iterrows():
             if pd.isna(row.iloc[0]) and pd.isna(row.iloc[1]): 
                 continue
-            model_name = str(row.iloc[1]).strip()
-            existing_rows[model_name] = row
+            existing_rows.append(row)
 
         def to_int(val):
             try: 
@@ -384,7 +388,10 @@ def get_part_details(part_type):
                 return 0
                 
         rows = []
-        for model_name, row in existing_rows.items():
+        for row in existing_rows:
+            model_name = str(row.iloc[1]).strip()
+            if model_name in ['nan', 'N/A', 'None']:
+                model_name = ''
             part_number = str(row.iloc[0]).strip()
             
             # 處理浮點數被轉成字串的 .0 尾巴 (例如 "12345.0" -> "12345")
@@ -498,7 +505,7 @@ def update_cell(part_type, item_id, field, new_value, user_id, model_name=None):
         wb.close()
         
         # 記錄歷程
-        log_edit(part_type, str(item_id) if item_id else model_name, field, old_value, new_value, user_id)
+        log_edit(part_type, str(item_id) if item_id else model_name, field, old_value, new_value, user_id, model_name=model_name)
         
         return {'success': True, 'old_value': old_value, 'total': total, 'item_id': item_id}
     
@@ -507,7 +514,7 @@ def update_cell(part_type, item_id, field, new_value, user_id, model_name=None):
         traceback.print_exc()
         return {'success': False, 'error': str(e)}
 
-def log_edit(part_type, item_id, field, old_value, new_value, user_id, note=None):
+def log_edit(part_type, item_id, field, old_value, new_value, user_id, note=None, model_name=None):
     """記錄編輯歷程"""
     try:
         log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
@@ -519,11 +526,16 @@ def log_edit(part_type, item_id, field, old_value, new_value, user_id, note=None
             with open(log_file, 'r', encoding='utf-8') as f:
                 history = json.load(f)
         
+        from .user import User
+        name_map = User.get_name_map()
+        user_display = name_map.get(user_id, user_id)
+
         entry = {
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'user': user_id,
+            'user': user_display,
             'part': part_type,
             'item_id': item_id,
+            'model_name': model_name, # 新增
             'field': field,
             'old_value': old_value,
             'new_value': new_value
@@ -556,6 +568,37 @@ def get_edit_history(part_type, limit=50):
         
         # 過濾該鑄件的歷程
         filtered = [h for h in history if h.get('part') == part_type]
+        
+        # 轉換使用者名稱為中文名
+        from .user import User
+        name_map = User.get_name_map()
+        for h in filtered:
+            if h.get('user') in name_map:
+                h['user'] = name_map[h['user']]
+        # 建立品號與機型對照表，用於回補舊有紀錄
+        _ITEM_MODEL_MAP = {}
+        try:
+            casting_file = current_app.config['CASTING_FILE']
+            xl = pd.ExcelFile(casting_file, engine='openpyxl')
+            sheet_idx = SHEET_MAP.get(part_type)
+            if sheet_idx is not None:
+                df = pd.read_excel(xl, sheet_name=sheet_idx)
+                for _, row in df.iterrows():
+                    p_id = str(row.iloc[0]).strip()
+                    model = str(row.iloc[1]).strip()
+                    if p_id and p_id != 'nan' and p_id != '品號' and model and model != 'nan':
+                        if p_id.endswith('.0'): p_id = p_id[:-2]
+                        _ITEM_MODEL_MAP[p_id] = model
+        except Exception as ex:
+            print(f"Error building model map in get_edit_history: {ex}")
+
+        # 回補機型資訊
+        for h in filtered:
+            if not h.get('model_name'):
+                item_id = str(h.get('item_id', '')).strip()
+                if item_id.endswith('.0'): item_id = item_id[:-2]
+                h['model_name'] = _ITEM_MODEL_MAP.get(item_id, item_id)
+
         return filtered[:limit]
     
     except Exception as e:
@@ -574,7 +617,39 @@ def get_item_history(part_type, item_id, limit=100):
             history = json.load(f)
         
         # 過濾該品號的歷程
-        filtered = [h for h in history if h.get('part') == part_type and h.get('item_id') == item_id]
+        filtered = [h for h in history if h.get('part') == part_type and str(h.get('item_id')) == str(item_id)]
+        
+        # 轉換使用者名稱為中文名
+        from .user import User
+        name_map = User.get_name_map()
+        for h in filtered:
+            if h.get('user') in name_map:
+                h['user'] = name_map[h['user']]
+        # 取得機型名稱備回補
+        target_model = ""
+        try:
+            casting_file = current_app.config['CASTING_FILE']
+            xl = pd.ExcelFile(casting_file, engine='openpyxl')
+            sheet_idx = SHEET_MAP.get(part_type)
+            if sheet_idx is not None:
+                df = pd.read_excel(xl, sheet_name=sheet_idx)
+                for _, row in df.iterrows():
+                    p_id = str(row.iloc[0]).strip()
+                    if p_id.endswith('.0'): p_id = p_id[:-2]
+                    check_id = str(item_id).strip()
+                    if check_id.endswith('.0'): check_id = check_id[:-2]
+                    
+                    if p_id == check_id:
+                        target_model = str(row.iloc[1]).strip()
+                        break
+        except:
+            pass
+
+        for h in filtered:
+                item_id_norm = str(h.get('item_id', '')).strip()
+                if item_id_norm.endswith('.0'): item_id_norm = item_id_norm[:-2]
+                h['model_name'] = target_model or h.get('item_id', '')
+
         return filtered[:limit]
     
     except Exception as e:
@@ -654,13 +729,14 @@ def get_stock_history(operation_type=None, part_type=None, date_from=None, date_
         try:
             casting_file = current_app.config['CASTING_FILE']
             import pandas as pd
-            xl = pd.ExcelFile(casting_file)
+            xl = pd.ExcelFile(casting_file, engine='openpyxl')
             for part_name, sheet_idx in [('底座', 1), ('工作台', 2), ('橫樑', 3), ('立柱', 4)]:
                 df = pd.read_excel(xl, sheet_name=sheet_idx)
                 for _, row in df.iterrows():
                     p_id = str(row.iloc[0]).strip()
                     model = str(row.iloc[1]).strip()
                     if p_id and p_id != 'nan' and p_id != '品號' and model and model != 'nan':
+                        if p_id.endswith('.0'): p_id = p_id[:-2]
                         _ITEM_MODEL_MAP[p_id] = model
         except Exception as ex:
             print(f"Error building model map: {ex}")
@@ -733,7 +809,7 @@ def get_stock_history(operation_type=None, part_type=None, date_from=None, date_
                 'user': h.get('user', ''),
                 'part': h.get('part', ''),
                 'item_id': h.get('item_id', ''),
-                'model': _ITEM_MODEL_MAP.get(str(h.get('item_id', '')), ''),
+                'model': _ITEM_MODEL_MAP.get(str(h.get('item_id', '')).replace('.0', '').strip(), h.get('model_name', '')),
                 'field': field,
                 'old_value': h.get('old_value', 0),
                 'new_value': h.get('new_value', 0),
@@ -744,10 +820,20 @@ def get_stock_history(operation_type=None, part_type=None, date_from=None, date_
             }
             
             # 從 field 或 note 中解析供應商/工單資訊
+            # 統一從 field 中解析工單與採購單
+            import re
+            wo_match = re.search(r'工單\s*(\S+)', field)
+            po_match = re.search(r'採購單\s*(\S+)', field)
+            
+            parsed_wo = wo_match.group(1).rstrip(',)') if wo_match else ''
+            parsed_po = po_match.group(1).rstrip(')') if po_match else ''
+            
+            record['work_order'] = parsed_wo
+            record['purchase_order'] = parsed_po
+            
             if is_stock_in:
                 # e.g. "素材 (入庫: 正鋒(CFC))"
-                import re
-                supplier_match = re.search(r'入庫:\s*(.+)\)', field)
+                supplier_match = re.search(r'入庫:\s*(.+?)(?:,|$)', field)
                 record['supplier'] = supplier_match.group(1).strip() if supplier_match else ''
                 
                 # 如果 field 沒抓到，從 note 抓
@@ -756,24 +842,21 @@ def get_stock_history(operation_type=None, part_type=None, date_from=None, date_
                     if s_note_match:
                         record['supplier'] = s_note_match.group(1).strip()
             elif is_stock_out:
-                # e.g. "成品研磨 (出庫: 工單 123456)"
-                import re
-                wo_match = re.search(r'工單\s*(\S+)', field)
-                po_match = re.search(r'採購單\s*(\S+)', field)
-                
-                parsed_wo = wo_match.group(1).rstrip(',)') if wo_match else ''
-                record['work_order'] = parsed_wo
-                record['purchase_order'] = po_match.group(1).rstrip(')') if po_match else ''
-                
                 # 從 note 中特別抓取鑄造商 (如果是出庫時有特別標記)
                 if note_text:
                     s_note_match = re.search(r'鑄造商:\s*([^,]+)', str(note_text))
                     if s_note_match:
                         record['supplier'] = s_note_match.group(1).strip()
                 
-                # 如果 note 沒寫工單，用 field 裡的
-                if not record['order_code'] and parsed_wo:
-                    record['order_code'] = parsed_wo
+            # 從 note 中再補強抓取採購單 (補足舊資料或特定格式)
+            if note_text:
+                p_note_match = re.search(r'採購單:\s*([^,]+)', str(note_text))
+                if p_note_match and not record['purchase_order']:
+                    record['purchase_order'] = p_note_match.group(1).strip()
+            
+            # 如果 note 沒寫工單，用 field 裡的
+            if not record['order_code'] and parsed_wo:
+                record['order_code'] = parsed_wo
             
             records.append(record)
             
@@ -798,7 +881,7 @@ def get_stock_history(operation_type=None, part_type=None, date_from=None, date_
 
 
 
-def stock_in_material(part_name, quantity, model=None, supplier=None, user=None, work_order_code=None, barcode=None):
+def stock_in_material(part_name, quantity, model=None, supplier=None, user=None, work_order_code=None, barcode=None, purchase_order=None):
     """
     入庫操作 - 增加素材數量
     """
@@ -845,8 +928,11 @@ def stock_in_material(part_name, quantity, model=None, supplier=None, user=None,
         if model:
             search_part_no = str(model).strip()
             for idx, row in df.iterrows():
-                # 第0欄是品號
                 curr_part_no = str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else ''
+                if curr_part_no.endswith('.0'):
+                    curr_part_no = curr_part_no[:-2]
+                if curr_part_no in ['nan', 'N/A', 'None']:
+                    curr_part_no = ''
                 
                 # 如果品號匹配
                 if curr_part_no == search_part_no:
@@ -856,8 +942,11 @@ def stock_in_material(part_name, quantity, model=None, supplier=None, user=None,
                     df.at[idx, df.columns[material_col_idx]] = new_val
                     updated = True
                     
+                    row_model = row.iloc[1] if len(row) > 1 else ''
+                    
                     log_data = {
                         'item_id': curr_part_no,
+                        'model_name': str(row_model).strip() if pd.notna(row_model) else '',
                         'old_value': old_v,
                         'new_value': new_val
                     }
@@ -896,9 +985,15 @@ def stock_in_material(part_name, quantity, model=None, supplier=None, user=None,
             user_id = user if user else session.get('user', 'System')
             field_name = '素材'
             if supplier:
-                field_name += f' (入庫: {supplier})'
+                field_name += f' (入庫: {supplier}'
+                if purchase_order:
+                    field_name += f', 採購單 {purchase_order}'
+                field_name += ')'
             else:
-                field_name += ' (入庫)'
+                field_name += ' (入庫'
+                if purchase_order:
+                    field_name += f': 採購單 {purchase_order}'
+                field_name += ')'
                 
             note = None
             note_parts = []
@@ -906,12 +1001,15 @@ def stock_in_material(part_name, quantity, model=None, supplier=None, user=None,
                 note_parts.append(f"工單編碼: {work_order_code}")
             if barcode:
                 note_parts.append(f"鑄件編號: {barcode}")
+            if purchase_order:
+                note_parts.append(f"採購單: {purchase_order}")
             if note_parts:
                 note = ', '.join(note_parts)
                 
             try:
                 log_edit(part_name, log_data['item_id'], field_name, 
-                         log_data['old_value'], log_data['new_value'], user_id, note)
+                         log_data['old_value'], log_data['new_value'], user_id, note,
+                         model_name=log_data.get('model_name'))
             except Exception as e:
                 print(f"Failed to log edit: {e}")
 
@@ -931,7 +1029,7 @@ def stock_in_material(part_name, quantity, model=None, supplier=None, user=None,
         return {'success': False, 'error': str(e)}
 
 
-def stock_out_product(part_name, work_order, quantity, model=None, purchase_order=None, supplier=None):
+def stock_out_product(part_name, work_order, quantity, model=None, purchase_order=None, supplier=None, user=None):
     """
     出庫操作 - 扣除成品數量
     """
@@ -980,6 +1078,10 @@ def stock_out_product(part_name, work_order, quantity, model=None, purchase_orde
             # 尋找目標行
             for idx, row in df.iterrows():
                 curr_part_no = str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else ''
+                if curr_part_no.endswith('.0'):
+                    curr_part_no = curr_part_no[:-2]
+                if curr_part_no in ['nan', 'N/A', 'None']:
+                    curr_part_no = ''
                 if curr_part_no == search_part_no:
                     target_idx = idx
                     val = row.iloc[product_col_idx]
@@ -997,8 +1099,11 @@ def stock_out_product(part_name, work_order, quantity, model=None, purchase_orde
             df.at[target_idx, df.columns[product_col_idx]] = new_val
             updated = True
             
+            row_model = df.iloc[target_idx, 1] if df.shape[1] > 1 else ''
+            
             log_data = {
                 'item_id': search_part_no,
+                'model_name': str(row_model).strip() if pd.notna(row_model) else '',
                 'old_value': current_stock,
                 'new_value': new_val
             }
@@ -1053,7 +1158,7 @@ def stock_out_product(part_name, work_order, quantity, model=None, purchase_orde
         # 寫入履歷
         # 如果是邏輯A (有log_data)，我們記錄精確值
         if log_data:
-            user_id = session.get('user', 'System')
+            user_id = user if user else session.get('user', 'System')
             field_name = f'{product_label} (出庫: 工單 {work_order}'
             if purchase_order:
                 field_name += f', 採購單 {purchase_order}'
@@ -1063,10 +1168,13 @@ def stock_out_product(part_name, work_order, quantity, model=None, purchase_orde
             note = f"工單編碼: {work_order}"
             if supplier:
                 note += f", 鑄造商: {supplier}"
+            if purchase_order:
+                note += f", 採購單: {purchase_order}"
                 
             try:
                 log_edit(part_name, log_data['item_id'], field_name, 
-                         log_data['old_value'], log_data['new_value'], user_id, note)
+                         log_data['old_value'], log_data['new_value'], user_id, note,
+                         model_name=log_data.get('model_name'))
             except Exception as e:
                 print(f"Failed to log edit: {e}")
         

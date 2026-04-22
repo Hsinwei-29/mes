@@ -743,7 +743,7 @@
     </style>
 </head>
 
-<body>
+<body data-part-name="{{ part_name }}" data-is-admin="{{ 'true' if is_admin else 'false' }}" data-is-logged-in="{{ 'true' if is_logged_in else 'false' }}">
     <div class="dashboard">
         <!-- 頂部標題列 -->
         <header class="header">
@@ -851,21 +851,21 @@
                         {% elif header == headers[-1] %}
                         <td class="total-col" style="padding-right: 28px;">
                             <span>{{ row[header] if row[header] else 0 }}</span>
-                            <span class="cell-info-icon" onclick="showCellHistory('{{ row['品號'] }}', '{{ header }}', '{{ row['機型'] }}')" title="點擊查看採購編號與工單詳情">🔎</span>
+                            <span class="cell-info-icon" onclick='showCellHistory({{ row["品號"]|tojson }}, {{ header|tojson }}, {{ row["機型"]|tojson }})' title="點擊查看採購編號與工單詳情">🔎</span>
                         </td>
                         {% else %}
                         <td style="padding-right: 28px;">
                             <input type="number" class="edit-input" data-field="{{ header }}"
                                 value="{{ row[header] if row[header] else 0 }}" min="0" {{ 'disabled' if not is_admin
                                 else '' }} onchange="markDirty(this)" style="margin-right: 4px;">
-                            <span class="cell-info-icon" onclick="showCellHistory('{{ row['品號'] }}', '{{ header }}', '{{ row['機型'] }}')" title="點擊查看採購編號與工單詳情">🔎</span>
+                            <span class="cell-info-icon" onclick='showCellHistory({{ row["品號"]|tojson }}, {{ header|tojson }}, {{ row["機型"]|tojson }})' title="點擊查看採購編號與工單詳情">🔎</span>
                         </td>
                         {% endif %}
                         {% endfor %}
                         <td style="white-space: nowrap;">
-                            <button class="history-btn" onclick="showHistory('{{ row['品號'] }}', '{{ row['機型'] }}')"
+                            <button class="history-btn" onclick='showHistory({{ row["品號"]|tojson }}, {{ row["機型"]|tojson }})'
                                 title="查看修改歷程">📋 履歷</button>
-                            <button class="allocation-btn" onclick="showAllocation('{{ row['品號'] }}')"
+                            <button class="allocation-btn" onclick='showAllocation({{ row["品號"]|tojson }})'
                                 title="查看工單需求分配">📊 分配</button>
                         </td>
                     </tr>
@@ -911,8 +911,8 @@
                             <label>零件類型</label>
                             <select id="sqFilterPart">
                                 <option value="">全部</option>
-                                <option value="工作台">工作台</option>
                                 <option value="底座">底座</option>
+                                <option value="工作台">工作台</option>
                                 <option value="橫樑">橫樑</option>
                                 <option value="立柱">立柱</option>
                             </select>
@@ -960,6 +960,7 @@
                                     <th>類型</th>
                                     <th class="no-translate" translate="no">【機型/品號】</th>
                                     <th class="no-translate" translate="no">【工單編碼】</th>
+                                    <th class="no-translate" translate="no">【採購編號】</th>
                                     <th>數量</th>
                                     <th>庫存變動</th>
                                     <th>其他資訊</th>
@@ -980,8 +981,10 @@
             </div>
         </div>
 
-        <!-- 履歷彈出視窗 -->
-        <div id="historyModal" class="history-modal">
+        </div><!-- /.dashboard -->
+
+        <!-- All Modals moved to BOTTOM for better visibility/nesting robustness -->
+        <div id="historyModal" class="history-modal" style="z-index: 30000 !important;">
             <div class="history-modal-content">
                 <div class="history-modal-header">
                     <h2 id="historyModalTitle">📋 製程轉換履歷</h2>
@@ -993,8 +996,8 @@
                     </div>
                 </div>
             </div>
-        <!-- 儲存格細節彈出視窗 (顯示 PO/WO) -->
-        <div id="cellHistoryModal" class="history-modal" style="z-index: 1002;">
+        </div>
+        <div id="cellHistoryModal" class="history-modal" style="z-index: 30002 !important;">
             <div class="history-modal-content" style="max-width: 700px;">
                 <div class="history-modal-header">
                     <h2 id="cellHistoryTitle">📋 庫存來源明細</h2>
@@ -1023,19 +1026,14 @@
                 </div>
             </div>
         </div>
-
-        <!-- 需求分配彈出視窗 -->
-        <div id="allocationModal" class="history-modal" style="z-index: 1001;">
+        <div id="allocationModal" class="history-modal" style="z-index: 30001 !important;">
             <div class="history-modal-content" style="max-width: 900px;">
                 <div class="history-modal-header">
                     <h2 id="allocationModalTitle">📊 工單需求與配賦情況</h2>
                     <button class="history-modal-close" onclick="closeAllocationModal()">&times;</button>
                 </div>
                 <div class="history-modal-body">
-                    <div id="allocationSummary"
-                        style="margin-bottom: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
-                        <!-- 由 JS 動態填充摘要 -->
-                    </div>
+                    <div id="allocationSummary" style="margin-bottom: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;"></div>
                     <div id="allocationTableContainer">
                         <table class="edit-table" style="width: 100%;">
                             <thead>
@@ -1049,17 +1047,13 @@
                                     <th>狀態</th>
                                 </tr>
                             </thead>
-                            <tbody id="allocationTableBody">
-                                <!-- 由 JS 動態填充 -->
-                            </tbody>
+                            <tbody id="allocationTableBody"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- 入庫模態視窗 -->
-        <div id="stockInModal" class="history-modal">
+        <div id="stockInModal" class="history-modal" style="z-index: 30000 !important;">
             <div class="history-modal-content">
                 <div class="history-modal-header">
                     <h2>➕ 素材入庫</h2>
@@ -1068,23 +1062,21 @@
                 <div class="history-modal-body" style="padding: 2rem;">
                     <form id="stockInForm" style="display: flex; flex-direction: column; gap: 1.5rem;">
                         <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">📷 條碼掃描 / 輸入
-                                (選填)：</label>
-                            <input type="text" id="stockInBarcode"
-                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
-                                placeholder="請掃描鑄件條碼或是輸入..." autocomplete="off">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">📷 條碼掃描 / 輸入 (選填)：</label>
+                            <input type="text" id="stockInBarcode" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;" placeholder="請掃描鑄件條碼或是輸入..." autocomplete="off">
                         </div>
                         <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">機型：</label>
-                            <input type="text" id="stockInModel" list="stockInModelList" required autocomplete="off"
-                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
-                                placeholder="請點擊輸入或搜尋機型...">
+                            <input type="text" id="stockInModel" list="stockInModelList" required autocomplete="off" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;" placeholder="請點擊輸入或搜尋機型...">
                             <datalist id="stockInModelList"></datalist>
                         </div>
                         <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">採購編號 (選填)：</label>
+                            <input type="text" id="stockInPurchaseOrder" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;" placeholder="請輸入採購編號..." autocomplete="off">
+                        </div>
+                        <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">鑄造商：</label>
-                            <select id="stockInSupplier" required
-                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;">
+                            <select id="stockInSupplier" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;">
                                 <option value="">請選擇鑄造商</option>
                                 <option value="永棧(LD)">永棧(LD)</option>
                                 <option value="源潤豐(YJF)">源潤豐(YJF)</option>
@@ -1093,35 +1085,20 @@
                                 <option value="揚鋼(YK)">揚鋼(YK)</option>
                             </select>
                         </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">工單編碼：</label>
-                            <input type="text" id="stockInWorkOrderCode"
-                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
-                                placeholder="請輸入工單編碼 (選填)">
-                        </div>
+
                         <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">數量：</label>
-                            <input type="number" id="stockInQuantity" min="1" required
-                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
-                                placeholder="請輸入入庫數量">
+                            <input type="number" id="stockInQuantity" min="1" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;" placeholder="請輸入入庫數量">
                         </div>
                         <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem;">
-                            <button type="button" onclick="closeStockInModal()"
-                                style="padding: 0.75rem 1.5rem; border: 1px solid var(--border-color); background: white; border-radius: var(--radius-sm); cursor: pointer;">
-                                取消
-                            </button>
-                            <button type="submit" class="btn-stock-in"
-                                style="padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius-sm); cursor: pointer;">
-                                確認入庫
-                            </button>
+                            <button type="button" onclick="closeStockInModal()" style="padding: 0.75rem 1.5rem; border: 1px solid var(--border-color); background: white; border-radius: var(--radius-sm); cursor: pointer;">取消</button>
+                            <button type="submit" class="btn-stock-in" style="padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius-sm); cursor: pointer;">確認入庫</button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
-
-        <!-- 出庫模態視窗 -->
-        <div id="stockOutModal" class="history-modal">
+        <div id="stockOutModal" class="history-modal" style="z-index: 30000 !important;">
             <div class="history-modal-content">
                 <div class="history-modal-header">
                     <h2>➖ 成品出庫</h2>
@@ -1131,53 +1108,335 @@
                     <form id="stockOutForm" style="display: flex; flex-direction: column; gap: 1.5rem;">
                         <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">機型：</label>
-                            <input type="text" id="stockOutModel" list="stockOutModelList" required autocomplete="off"
-                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
-                                placeholder="請點擊輸入或搜尋機型...">
+                            <input type="text" id="stockOutModel" list="stockOutModelList" required autocomplete="off" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;" placeholder="請點擊輸入或搜尋機型...">
                             <datalist id="stockOutModelList"></datalist>
                         </div>
                         <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">採購編號 (選填)：</label>
+                            <input type="text" id="stockOutPurchaseOrder" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;" placeholder="請輸入採購編號..." autocomplete="off">
+                        </div>
+                        <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">工單號碼：</label>
-                            <input type="text" id="stockOutWorkOrder" list="stockOutWorkOrderList" required autocomplete="off"
-                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
-                                placeholder="載入中...">
+                            <input type="text" id="stockOutWorkOrder" list="stockOutWorkOrderList" required autocomplete="off" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;" placeholder="載入中...">
                             <datalist id="stockOutWorkOrderList"></datalist>
                         </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">採購編號
-                                (選填)：</label>
-                            <input type="text" id="stockOutPurchaseOrder"
-                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
-                                placeholder="請輸入採購編號">
-                        </div>
+
                         <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">數量：</label>
-                            <input type="number" id="stockOutQuantity" min="1" required
-                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;"
-                                placeholder="請輸入出庫數量">
+                            <input type="number" id="stockOutQuantity" min="1" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;" placeholder="請輸入出庫數量">
                         </div>
                         <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem;">
-                            <button type="button" onclick="closeStockOutModal()"
-                                style="padding: 0.75rem 1.5rem; border: 1px solid var(--border-color); background: white; border-radius: var(--radius-sm); cursor: pointer;">
-                                取消
-                            </button>
-                            <button type="submit" class="btn-stock-out"
-                                style="padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius-sm); cursor: pointer;">
-                                確認出庫
-                            </button>
+                            <button type="button" onclick="closeStockOutModal()" style="padding: 0.75rem 1.5rem; border: 1px solid var(--border-color); background: white; border-radius: var(--radius-sm); cursor: pointer;">取消</button>
+                            <button type="submit" class="btn-stock-out" style="padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius-sm); cursor: pointer;">確認出庫</button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
 
-    </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
-        const partName = '{{ part_name }}';
-        const isAdmin = {{ 'true' if is_admin else 'false' }};
-        const isLoggedIn = {{ 'true' if is_logged_in else 'false' }};
+        (function() {
+            // --- 全域變數初始化 ---
+            const body = document.body;
+            window.partName = body.getAttribute('data-part-name') || '底座';
+            window.isAdmin = body.getAttribute('data-is-admin') === 'true';
+            window.isLoggedIn = body.getAttribute('data-is-logged-in') === 'true';
+
+            console.log(`[INIT] Casting Tracking - Part: ${window.partName}, Admin: ${window.isAdmin}`);
+
+            // --- 全域函式定義 (掛載在 window 確保 HTML onclick 可用) ---
+            
+            window.showStockInDialog = function(pName) {
+                console.log("[ACTION] Opening Stock In Modal for:", pName);
+                const modal = document.getElementById('stockInModal');
+                if (modal) {
+                    modal.classList.add('active');
+                    setTimeout(() => {
+                        const barcodeInput = document.getElementById('stockInBarcode');
+                        if (barcodeInput) barcodeInput.focus();
+                    }, 300);
+                    
+                    // 載入機型列表
+                    const stockInModelList = document.getElementById('stockInModelList');
+                    if (stockInModelList) {
+                        const models = extractModelsFromTable();
+                        stockInModelList.innerHTML = models.map(m => `<option value="${m.display}">`).join('');
+                    }
+                } else {
+                    console.error("[ERROR] stockInModal not found in DOM!");
+                }
+            };
+
+            window.closeStockInModal = function() {
+                const modal = document.getElementById('stockInModal');
+                if (modal) {
+                    modal.classList.remove('active');
+                    document.getElementById('stockInForm').reset();
+                }
+            };
+
+            window.showStockOutDialog = function(pName) {
+                console.log("[ACTION] Opening Stock Out Modal for:", pName);
+                const modal = document.getElementById('stockOutModal');
+                if (modal) {
+                    modal.classList.add('active');
+                    
+                    // 載入機型列表
+                    const stockOutModelList = document.getElementById('stockOutModelList');
+                    if (stockOutModelList) {
+                        const models = extractModelsFromTable();
+                        stockOutModelList.innerHTML = models.map(m => `<option value="${m.display}">`).join('');
+                    }
+                    
+                    // 載入工單選項
+                    loadStockOutWorkOrders();
+                } else {
+                    console.error("[ERROR] stockOutModal not found in DOM!");
+                }
+            };
+
+            window.closeStockOutModal = function() {
+                const modal = document.getElementById('stockOutModal');
+                if (modal) {
+                    modal.classList.remove('active');
+                    document.getElementById('stockOutForm').reset();
+                }
+            };
+        })();
+
+        // 從表格提取機型
+        function extractModelsFromTable() {
+            const table = document.querySelector('.edit-table');
+            const models = [];
+            if (table) {
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    const partNoCell = row.cells[0];
+                    const modelCell = row.cells[1];
+                    if (partNoCell && modelCell) {
+                        const partNo = partNoCell.textContent.trim();
+                        const modelName = modelCell.textContent.trim();
+                        if (partNo && modelName) {
+                            models.push({
+                                partNo: partNo,
+                                modelName: modelName,
+                                display: `${partNo} - ${modelName}`
+                            });
+                        }
+                    }
+                });
+            }
+            return models;
+        }
+
+        // 載入出庫工單
+        function loadStockOutWorkOrders() {
+            const woInput = document.getElementById('stockOutWorkOrder');
+            const woList = document.getElementById('stockOutWorkOrderList');
+            if (woInput) woInput.placeholder = '載入中...';
+            
+            fetch('/api/orders')
+                .then(res => res.json())
+                .then(data => {
+                    const orders = data.orders || [];
+                    const today = new Date();
+                    const activeOrders = orders.filter(o => {
+                        const endDate = o.生產結束 ? new Date(o.生產結束) : null;
+                        return !(endDate && endDate < today);
+                    }).sort((a, b) => {
+                        const dateA = a.生產開始 ? new Date(a.生產開始).getTime() : 0;
+                        const dateB = b.生產開始 ? new Date(b.生產開始).getTime() : 0;
+                        return dateA - dateB;
+                    });
+
+                    if (woInput) woInput.placeholder = '請點擊輸入或搜尋工單號碼...';
+                    if (woList) {
+                        woList.innerHTML = activeOrders.map(o => {
+                            const desc = o.品號說明 ? o.品號說明.substring(0, 15) : '';
+                            return `<option value="${o.工單}${desc ? ' - ' + desc : ''}">`;
+                        }).join('');
+                    }
+                })
+                .catch(err => {
+                    if (woInput) woInput.placeholder = '載入失敗';
+                });
+        }
+
+        // 需求分配視窗
+        function showAllocation(itemId) {
+            console.log("[ACTION] Opening Allocation Modal for:", itemId);
+            const modal = document.getElementById('allocationModal');
+            if (modal) {
+                modal.classList.add('active');
+                const tableBody = document.getElementById('allocationTableBody');
+                const summaryDiv = document.getElementById('allocationSummary');
+                const title = document.getElementById('allocationModalTitle');
+                
+                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">載入中...</td></tr>';
+                summaryDiv.innerHTML = '';
+
+                fetch(`/api/inventory/allocation/${itemId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            tableBody.innerHTML = `<tr><td colspan="7" style="color: red; text-align: center; padding: 2rem;">錯誤: ${data.error}</td></tr>`;
+                            return;
+                        }
+                        title.innerHTML = `📊 ${data.part_desc || itemId} - 工單需求與配賦情況`;
+                        
+                        summaryDiv.innerHTML = `
+                            <div style="background: #f3f4f6; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.8rem; color: #666;">現有庫存</div>
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #8b5cf6;">${data.summary.stock}</div>
+                            </div>
+                            <div style="background: #f3f4f6; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.8rem; color: #666;">需求總量</div>
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #333;">${data.summary.total_demand}</div>
+                            </div>
+                            <div style="background: #ecfdf5; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.8rem; color: #666;">已領總數</div>
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;">${data.summary.total_demand - data.summary.total_pending}</div>
+                            </div>
+                            <div style="background: #fef2f2; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.8rem; color: #666;">未結案總數</div>
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #ef4444;">${data.summary.total_pending}</div>
+                            </div>
+                        `;
+
+                        const unclosedAllocation = data.allocation.filter(item => item.待領數量 > 0);
+                        if (unclosedAllocation.length === 0) {
+                            tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #999;">目前無未結案工單需求</td></tr>';
+                        } else {
+                            tableBody.innerHTML = unclosedAllocation.map(item => {
+                                let statusColor = '#999';
+                                if (item.分配狀態 === '完全分配') statusColor = '#10b981';
+                                else if (item.分配狀態 === '部分分配') statusColor = '#fbbf24';
+                                else if (item.分配狀態 === '未分配') statusColor = '#ef4444';
+                                return `
+                                    <tr>
+                                        <td style="font-weight: bold;">${item.工單號碼}</td>
+                                        <td>${item.客戶名稱}</td>
+                                        <td>${item.需求數量}</td>
+                                        <td>${item.已領料}</td>
+                                        <td style="font-weight: bold; color: #ef4444;">${item.待領數量}</td>
+                                        <td>${item.生產開始 || '-'}</td>
+                                        <td><span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">${item.分配狀態}</span></td>
+                                    </tr>
+                                `;
+                            }).join('');
+                        }
+                    })
+                    .catch(err => {
+                        tableBody.innerHTML = `<tr><td colspan="7" style="color: red; text-align: center; padding: 2rem;">載入失敗: ${err.message}</td></tr>`;
+                    });
+            }
+        }
+
+        function closeAllocationModal() {
+            const modal = document.getElementById('allocationModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function showCellHistory(itemId, field, modelName) {
+            const modal = document.getElementById('cellHistoryModal');
+            if (modal) {
+                modal.classList.add('active');
+                document.getElementById('cellHistoryTitle').textContent = `📋 ${modelName} 庫存來源明細`;
+                const info = document.getElementById('cellHistoryInfo');
+                info.innerHTML = `品號：<strong>${itemId}</strong> | 欄位：<strong>${field}</strong> 的最近異動記錄`;
+                
+                const tableBody = document.getElementById('cellHistoryTableBody');
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">載入中...</td></tr>';
+
+                const encodedPartName = encodeURIComponent(partName);
+                const encodedItemId = encodeURIComponent(itemId);
+                
+                fetch(`/api/inventory/history/${encodedPartName}/${encodedItemId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (!data.history || data.history.length === 0) {
+                            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #999;">目前無此格的相關異動記錄</td></tr>';
+                            return;
+                        }
+                        const filtered = data.history.filter(h => h.field === field || h.field.startsWith(field + ' ('));
+                        if (filtered.length === 0) {
+                            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #999;">目前無此格的相關異動記錄</td></tr>';
+                            return;
+                        }
+                        tableBody.innerHTML = filtered.map(h => {
+                            const diff = (h.new_value ?? 0) - (h.old_value ?? 0);
+                            const action = diff > 0 ? `<span class="badge-in">入庫</span>` : `<span class="badge-out">出庫</span>`;
+                            return `
+                                <tr data-part="${encodedPartName}" data-item="${h.item_id}" data-time="${h.timestamp}" data-field="${h.field}">
+                                    <td style="font-size: 0.8rem;">${h.timestamp.split(' ')[0]}<br>${h.timestamp.split(' ')[1]}</td>
+                                    <td>${action}</td>
+                                    <td style="font-weight: bold; color: ${diff > 0 ? '#10b981' : '#ef4444'};">${diff > 0 ? '+' : ''}${diff}</td>
+                                    <td class="note-cell" style="font-size: 0.85rem; text-align: left;">
+                                        <div class="note-content-wrapper" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                            <span class="note-text">${h.note || '-'}</span>
+                                            ${isLoggedIn ? `<button class="edit-note-btn" onclick="startEditNote(this)" title="編輯備註">✏️</button>` : ''}
+                                        </div>
+                                    </td>
+                                    <td>${h.user}</td>
+                                </tr>
+                            `;
+                        }).join('');
+                    })
+                    .catch(err => {
+                        tableBody.innerHTML = `<tr><td colspan="5" style="color: red; text-align: center; padding: 1rem;">載入失敗: ${err.message}</td></tr>`;
+                    });
+            }
+        }
+
+        function closeCellHistoryModal() {
+            const modal = document.getElementById('cellHistoryModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        // --- 頁面初始化 ---
+
+        function startEditNote(button) {
+            const timelineItem = button.closest('.timeline-item');
+            const noteDiv = timelineItem.querySelector('.timeline-note');
+            const currentNote = noteDiv ? noteDiv.textContent.replace('📝 ', '').trim() : '';
+            const historyId = timelineItem.getAttribute('data-id');
+            
+            const newNote = prompt('請輸入新的備註：', currentNote);
+            if (newNote !== null) {
+                saveHistoryNote(historyId, newNote, button);
+            }
+        }
+
+        function saveHistoryNote(historyId, note, button) {
+            fetch('/api/inventory/history/note', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: historyId, note: note })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // 重新整理履歷
+                    const titleElem = document.getElementById('historyModalTitle');
+                    if (titleElem) {
+                        const titleText = titleElem.textContent;
+                        const modelMatch = titleText.match(/📋 (.+) \(/);
+                        const idMatch = titleText.match(/\((.+)\)/);
+                        if (modelMatch && idMatch) {
+                            showHistory(idMatch[1], modelMatch[1]);
+                        } else {
+                            location.reload();
+                        }
+                    } else {
+                        location.reload();
+                    }
+                } else {
+                    alert('❌ 更新失敗：' + data.error);
+                }
+            })
+            .catch(err => alert('❌ 更新失敗：' + err.message));
+        }
 
         console.log(`[SYSTEM] Casting Tracking Loaded - Part: ${partName}, Admin: ${isAdmin}`);
         console.log(`[SYSTEM] Feature: Cell History Details (WO/PO Modal) initialized.`);
@@ -1309,15 +1568,19 @@
         });
 
         // WebSocket 連接
-        const socket = io();
-
-        // 監聽即時更新
-        socket.on('data_updated', function (data) {
-            if (data.part === partName) {
-                updateRowData(data.item_id, data.field, data.new_value, data.total);
-                addHistoryItem(data);
-            }
-        });
+        let socket;
+        if (typeof io !== 'undefined') {
+            socket = io();
+            // 監聽即時更新
+            socket.on('data_updated', function (data) {
+                if (data.part === partName && data.item_id) {
+                    updateRowData(data.item_id, data.field, data.new_value, data.total);
+                    addHistoryItem(data);
+                }
+            });
+        } else {
+            console.warn('[SYSTEM] Socket.IO not found, real-time updates disabled.');
+        }
 
         function updateRowData(itemId, field, newValue, total) {
             const row = document.querySelector(`tr[data-item-id="${itemId}"]`);
@@ -1425,7 +1688,8 @@
             const list = document.getElementById('historyList');
             const item = document.createElement('div');
             item.className = 'history-item';
-            item.innerHTML = `<strong>${data.user}</strong> 修改 ${data.item_id} 的 ${data.field}: ${data.old_value} → ${data.new_value} (${data.timestamp})`;
+            const modelLabel = data.model_name ? `<span style="color: #2563eb; font-weight: 600;">${data.model_name}</span> ` : '';
+            item.innerHTML = `<strong>${data.user}</strong> 修改 ${modelLabel}(${data.item_id}) 的 ${data.field}: ${data.old_value} → ${data.new_value} (${data.timestamp})`;
             list.insertBefore(item, list.firstChild);
         }
 
@@ -1435,153 +1699,18 @@
             .then(data => {
                 const list = document.getElementById('historyList');
                 if (data.history && data.history.length > 0) {
-                    list.innerHTML = data.history.map(h =>
-                        `<div class="history-item"><strong>${h.user}</strong> 修改 ${h.item_id} 的 ${h.field}: ${h.old_value} → ${h.new_value} (${h.timestamp})</div>`
-                    ).join('');
+                    list.innerHTML = data.history.map(h => {
+                        const modelLabel = h.model_name ? `<span style="color: #2563eb; font-weight: 600;">${h.model_name}</span> ` : '';
+                        return `<div class="history-item"><strong>${h.user}</strong> 修改 ${modelLabel}(${h.item_id}) 的 ${h.field}: ${h.old_value} → ${h.new_value} (${h.timestamp})</div>`;
+                    }).join('');
                 } else {
                     list.innerHTML = '<div class="history-item">尚無修改記錄</div>';
                 }
             });
 
-        // --- 需求分配相關函式 ---
-        function showAllocation(itemId) {
-            const modal = document.getElementById('allocationModal');
-            const title = document.getElementById('allocationModalTitle');
-            const summaryDiv = document.getElementById('allocationSummary');
-            const tableBody = document.getElementById('allocationTableBody');
+        /* 需求分配相關函式已移至頂部 */
 
-            modal.style.display = 'block';
-            tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">載入中...</td></tr>';
-            summaryDiv.innerHTML = '';
-
-            fetch(`/api/inventory/allocation/${itemId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        tableBody.innerHTML = `<tr><td colspan="7" style="color: red; text-align: center; padding: 2rem;">錯誤: ${data.error}</td></tr>`;
-                        return;
-                    }
-
-                    title.innerHTML = `📊 ${data.part_desc || itemId} - 工單需求與配賦情況`;
-
-                    // 填充摘要
-                    summaryDiv.innerHTML = `
-                            <div style="background: #f3f4f6; padding: 1rem; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 0.8rem; color: #666;">現有庫存</div>
-                                <div style="font-size: 1.5rem; font-weight: bold; color: #8b5cf6;">${data.summary.stock}</div>
-                            </div>
-                            <div style="background: #f3f4f6; padding: 1rem; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 0.8rem; color: #666;">需求總量</div>
-                                <div style="font-size: 1.5rem; font-weight: bold; color: #333;">${data.summary.total_demand}</div>
-                            </div>
-                            <div style="background: #ecfdf5; padding: 1rem; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 0.8rem; color: #666;">已領總數</div>
-                                <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;">${data.summary.total_demand - data.summary.total_pending}</div>
-                            </div>
-                            <div style="background: #fef2f2; padding: 1rem; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 0.8rem; color: #666;">未結案總數</div>
-                                <div style="font-size: 1.5rem; font-weight: bold; color: #ef4444;">${data.summary.total_pending}</div>
-                            </div>
-                        `;
-
-                    // 填充表格
-                    const unclosedAllocation = data.allocation.filter(item => item.待領數量 > 0);
-                    
-                    if (unclosedAllocation.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #999;">目前無未結案工單需求</td></tr>';
-                    } else {
-                        tableBody.innerHTML = unclosedAllocation.map(item => {
-                            let statusColor = '#999';
-                            if (item.分配狀態 === '完全分配') statusColor = '#10b981';
-                            else if (item.分配狀態 === '部分分配') statusColor = '#fbbf24';
-                            else if (item.分配狀態 === '未分配') statusColor = '#ef4444';
-
-                            return `
-                                    <tr>
-                                        <td style="font-weight: bold;">${item.工單號碼}</td>
-                                        <td>${item.客戶名稱}</td>
-                                        <td>${item.需求數量}</td>
-                                        <td>${item.已領料}</td>
-                                        <td style="font-weight: bold; color: #ef4444;">${item.待領數量}</td>
-                                        <td>${item.生產開始 || '-'}</td>
-                                        <td><span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">${item.分配狀態}</span></td>
-                                    </tr>
-                                `;
-                        }).join('');
-                    }
-                })
-                .catch(err => {
-                    tableBody.innerHTML = `<tr><td colspan="7" style="color: red; text-align: center; padding: 2rem;">載入失敗: ${err.message}</td></tr>`;
-                });
-        }
-
-        function closeAllocationModal() {
-            document.getElementById('allocationModal').style.display = 'none';
-        }
-
-        // --- 儲存格細節 (PO/WO) 相關函式 ---
-        function showCellHistory(itemId, field, modelName) {
-            const modal = document.getElementById('cellHistoryModal');
-            const title = document.getElementById('cellHistoryTitle');
-            const info = document.getElementById('cellHistoryInfo');
-            const tableBody = document.getElementById('cellHistoryTableBody');
-
-            modal.classList.add('active');
-            info.innerHTML = `<strong>${modelName}</strong> - <strong>${field}</strong> 的最近異動記錄`;
-            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">載入中...</td></tr>';
-
-            const encodedPartName = encodeURIComponent(partName);
-            const encodedItemId = encodeURIComponent(itemId);
-            
-            fetch(`/api/inventory/history/${encodedPartName}/${encodedItemId}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (!data.history || data.history.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #999;">目前無此格的相關異動記錄</td></tr>';
-                        return;
-                    }
-
-                    // 過濾該欄位的歷史 (包含如果是入庫/出庫，欄位名稱會包含在括號內)
-                    const filtered = data.history.filter(h => {
-                        return h.field === field || h.field.startsWith(field + ' (');
-                    });
-
-                    if (filtered.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #999;">目前無此格的相關異動記錄</td></tr>';
-                        return;
-                    }
-
-                    tableBody.innerHTML = filtered.map(h => {
-                        const oldVal = h.old_value ?? 0;
-                        const newVal = h.new_value ?? 0;
-                        const diff = newVal - oldVal;
-                        const action = diff > 0 ? `<span class="badge-in">入庫</span>` : `<span class="badge-out">出庫</span>`;
-                        
-                        return `
-                            <tr data-part="${encodedPartName}" data-item="${h.item_id}" data-time="${h.timestamp}" data-field="${h.field}">
-                                <td style="font-size: 0.8rem;">${h.timestamp.split(' ')[0]}<br>${h.timestamp.split(' ')[1]}</td>
-                                <td>${action}</td>
-                                <td style="font-weight: bold; color: ${diff > 0 ? '#10b981' : '#ef4444'};">${diff > 0 ? '+' : ''}${diff}</td>
-                                <td class="note-cell" style="font-size: 0.85rem; text-align: left;">
-                                    <div class="note-content-wrapper" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                                        <span class="note-text">${h.note || '-'}</span>
-                                        ${isLoggedIn ? `<button class="edit-note-btn" onclick="startEditNote(this)" title="編輯備註">✏️</button>` : ''}
-                                    </div>
-                                </td>
-                                <td>${h.user}</td>
-                            </tr>
-                        `;
-                    }).join('');
-                })
-                .catch(err => {
-                    console.error('Failed to load cell details:', err);
-                    tableBody.innerHTML = `<tr><td colspan="5" style="color: red; text-align: center; padding: 1rem;">載入失敗: ${err.message}</td></tr>`;
-                });
-        }
-
-        function closeCellHistoryModal() {
-            document.getElementById('cellHistoryModal').classList.remove('active');
-        }
+        /* 儲存格細節函式已移至頂部 */
 
         // --- 歷史紀錄編輯功能 ---
         function startEditNote(btn) {
@@ -1746,57 +1875,7 @@
             }
         });
 
-        // 出入庫功能
-        function showStockInDialog(partName) {
-            // 打開模態視窗
-            const modal = document.getElementById('stockInModal');
-            modal.classList.add('active');
-
-            // 聚焦在條碼輸入框
-            setTimeout(() => {
-                const barcodeInput = document.getElementById('stockInBarcode');
-                if (barcodeInput) barcodeInput.focus();
-            }, 300);
-
-            // 載入該零件的所有機型
-            const modelSelect = document.getElementById('stockInModel');
-            modelSelect.innerHTML = '<option value="">載入中...</option>';
-
-            // 從表格中提取品號和機型列表
-            const table = document.querySelector('.edit-table');
-            const models = [];
-            if (table) {
-                const rows = table.querySelectorAll('tbody tr');
-                rows.forEach(row => {
-                    const partNoCell = row.cells[0];  // 品號
-                    const modelCell = row.cells[1];   // 機型
-                    if (partNoCell && modelCell) {
-                        const partNo = partNoCell.textContent.trim();
-                        const modelName = modelCell.textContent.trim();
-                        if (partNo && modelName) {
-                            models.push({
-                                partNo: partNo,
-                                modelName: modelName,
-                                display: `${partNo} - ${modelName}`
-                            });
-                        }
-                    }
-                });
-            }
-
-            // 填充機型 datalist
-            const stockInModelList = document.getElementById('stockInModelList');
-            document.getElementById('stockInModel').value = '';
-            if (stockInModelList) {
-                stockInModelList.innerHTML = models.map(m => `<option value="${m.display}">`).join('');
-            }
-        }
-
-        function closeStockInModal() {
-            const modal = document.getElementById('stockInModal');
-            modal.classList.remove('active');
-            document.getElementById('stockInForm').reset();
-        }
+        /* 出入庫對話框函式已移至頂部 */
 
         // 處理入庫表單提交
         document.getElementById('stockInForm').addEventListener('submit', function (e) {
@@ -1808,8 +1887,13 @@
             }
             const supplier = document.getElementById('stockInSupplier').value;
             const quantity = parseInt(document.getElementById('stockInQuantity').value);
-            const workOrderCode = document.getElementById('stockInWorkOrderCode').value.trim();
-            const barcode = document.getElementById('stockInBarcode').value.trim();
+            const workOrderCodeElem = document.getElementById('stockInWorkOrderCode');
+            const workOrderCode = workOrderCodeElem ? workOrderCodeElem.value.trim() : '';
+            const barcodeElem = document.getElementById('stockInBarcode');
+            const barcode = barcodeElem ? barcodeElem.value.trim() : '';
+
+            const purchaseOrderElem = document.getElementById('stockInPurchaseOrder');
+            const purchaseOrder = purchaseOrderElem ? purchaseOrderElem.value.trim() : '';
 
             if (!model || !supplier || !quantity) {
                 alert('請填寫所有欄位！');
@@ -1825,7 +1909,8 @@
                     supplier: supplier,
                     quantity: quantity,
                     work_order_code: workOrderCode,
-                    barcode: barcode
+                    barcode: barcode,
+                    purchase_order: purchaseOrder
                 })
             })
                 .then(r => r.json())
@@ -1850,82 +1935,8 @@
             }
         });
 
-        function showStockOutDialog(partName) {
-            // 打開模態視窗
-            const modal = document.getElementById('stockOutModal');
-            modal.classList.add('active');
-
-            // 載入該零件的所有機型
-            const modelSelect = document.getElementById('stockOutModel');
-            modelSelect.innerHTML = '<option value="">載入中...</option>';
-
-            // 從表格中提取品號和機型列表
-            const table = document.querySelector('.edit-table');
-            const models = [];
-            if (table) {
-                const rows = table.querySelectorAll('tbody tr');
-                rows.forEach(row => {
-                    const partNoCell = row.cells[0];  // 品號
-                    const modelCell = row.cells[1];   // 機型
-                    if (partNoCell && modelCell) {
-                        const partNo = partNoCell.textContent.trim();
-                        const modelName = modelCell.textContent.trim();
-                        if (partNo && modelName) {
-                            models.push({
-                                partNo: partNo,
-                                modelName: modelName,
-                                display: `${partNo} - ${modelName}`
-                            });
-                        }
-                    }
-                });
-            }
-
-            // 填充機型 datalist
-            const stockOutModelList = document.getElementById('stockOutModelList');
-            document.getElementById('stockOutModel').value = '';
-            if (stockOutModelList) {
-                stockOutModelList.innerHTML = models.map(m => `<option value="${m.display}">`).join('');
-            }
-
-            // 載入工單選項 (過濾已完成)
-            const woInput = document.getElementById('stockOutWorkOrder');
-            const woList = document.getElementById('stockOutWorkOrderList');
-            if (woInput) {
-                woInput.value = '';
-                woInput.placeholder = '載入中...';
-            }
-            if (woList) {
-                woList.innerHTML = '';
-            }
-
-            fetch('/api/orders')
-                .then(res => res.json())
-                .then(data => {
-                    const orders = data.orders || [];
-                    const today = new Date();
-                    const activeOrders = orders.filter(o => {
-                        const endDate = o.生產結束 ? new Date(o.生產結束) : null;
-                        return !(endDate && endDate < today);
-                    }).sort((a, b) => {
-                        const dateA = a.生產開始 ? new Date(a.生產開始).getTime() : 0;
-                        const dateB = b.生產開始 ? new Date(b.生產開始).getTime() : 0;
-                        return dateA - dateB;
-                    });
-
-                    if (woInput) woInput.placeholder = '請點擊輸入或搜尋工單號碼...';
-                    if (woList) {
-                        woList.innerHTML = activeOrders.map(o => {
-                            const desc = o.品號說明 ? o.品號說明.substring(0, 15) : '';
-                            return `<option value="${o.工單}${desc ? ' - ' + desc : ''}">`;
-                        }).join('');
-                    }
-                })
-                .catch(err => {
-                    if (woInput) woInput.placeholder = '載入失敗';
-                    console.error('Error loading orders:', err);
-                });
-        }
+        /* 出庫對話框函式已移至頂部 */
+        /* 載入工單函式已移至頂部 */
 
         function closeStockOutModal() {
             const modal = document.getElementById('stockOutModal');
@@ -1945,7 +1956,8 @@
             if (workOrder && workOrder.includes(' - ')) {
                 workOrder = workOrder.split(' - ')[0].trim();
             }
-            const purchaseOrder = document.getElementById('stockOutPurchaseOrder').value;
+            const purchaseOrderElem = document.getElementById('stockOutPurchaseOrder');
+            const purchaseOrder = purchaseOrderElem ? purchaseOrderElem.value.trim() : '';
             const quantity = parseInt(document.getElementById('stockOutQuantity').value);
 
             if (!model || !workOrder || !quantity) {
@@ -2075,7 +2087,6 @@
                         
                         // 組合其他資訊 (排除已顯示的欄位)
                         let otherItems = [];
-                        if (r.purchase_order) otherItems.push(`採購: ${r.purchase_order}`);
                         
                         // 如果是出庫，顯示出庫類型
                         if (r.operation === '出庫' && r.field) {
@@ -2093,6 +2104,7 @@
                                     <small style="opacity: 0.7; font-weight: 400;">${r.item_id}</small>
                                 </td>
                                 <td style="font-family: monospace; font-size: 0.9rem;">${r.order_code || '-'}</td>
+                                <td style="font-family: monospace; font-size: 0.9rem;">${r.purchase_order || '-'}</td>
                                 <td style="font-weight: 700; font-size: 1.1rem; color: var(--text-primary);">${r.quantity}</td>
                                 <td style="color: ${r.operation === '入庫' ? '#10b981' : '#ef4444'}; font-size: 0.9rem;">
                                     ${r.old_value} ${arrow} ${r.new_value}
@@ -2149,6 +2161,37 @@
                 })
                 .catch(err => console.error('Error fetching shortage data:', err));
         });
+
+        // ── 從缺料分析跳轉過來時，自動捲動到指定品號並高亮 ──
+        (function highlightFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const targetPartNo = params.get('highlight');
+            if (!targetPartNo) return;
+
+            // 等 DOM 完成渲染
+            setTimeout(() => {
+                const row = document.querySelector(`tr[data-item-id="${targetPartNo}"]`);
+                if (row) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    row.style.transition = 'background-color 0.3s';
+                    row.style.backgroundColor = 'rgba(255, 200, 0, 0.35)';
+                    row.style.boxShadow = '0 0 0 2px #f59e0b';
+                    // 閃爍 3 次後保持淡黃底色
+                    let count = 0;
+                    const interval = setInterval(() => {
+                        count++;
+                        row.style.backgroundColor = count % 2 === 0
+                            ? 'rgba(255, 200, 0, 0.35)'
+                            : 'rgba(255, 200, 0, 0.1)';
+                        if (count >= 6) {
+                            clearInterval(interval);
+                            row.style.backgroundColor = 'rgba(255, 200, 0, 0.15)';
+                            row.style.boxShadow = '';
+                        }
+                    }, 400);
+                }
+            }, 300);
+        })();
     </script>
 </body>
 

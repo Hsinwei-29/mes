@@ -38,7 +38,7 @@ def calculate_supply_demand():
                 hard_shortage[part_type] = True
     
     analysis = []
-    for part in ['工作台', '底座', '橫樑', '立柱']:
+    for part in ['底座', '工作台', '橫樑', '立柱']:
         stock = supply.get(part, 0)
         semi = semi_finished.get(part, 0)
         fin = finished.get(part, 0)
@@ -216,7 +216,7 @@ def api_search_model(model_name):
         
         # 取得各鑄件的詳細數據
         parts_detail = {}
-        for part_name in ['工作台', '底座', '橫樑', '立柱']:
+        for part_name in ['底座', '工作台', '橫樑', '立柱']:
             part_details = get_part_details(part_name)
             rows = part_details.get('rows', [])
             
@@ -227,7 +227,7 @@ def api_search_model(model_name):
                 # 根據不同零件計算半品和成品
                 semi_finished_fields = {
                     '底座': ['素材', 'M4', 'M3'],
-                    '工作台': ['素材', 'W1', 'W2', 'W3', 'W4'],
+                    '工作台': ['素材', 'W1', 'W2', 'W4'],
                     '橫樑': ['素材', 'M6', 'M5'],
                     '立柱': ['素材', '半品', '成品銑工']
                 }
@@ -324,6 +324,7 @@ def api_update_inventory(part_type):
                 socketio.emit('data_updated', {
                     'part': part_type,
                     'item_id': actual_item_id,
+                    'model_name': model_name,
                     'field': field,
                     'old_value': result.get('old_value'),
                     'new_value': new_value,
@@ -381,6 +382,7 @@ def api_batch_update_inventory(part_type):
                     socketio.emit('data_updated', {
                         'part': part_type,
                         'item_id': actual_item_id,
+                        'model_name': model_name,
                         'field': field,
                         'old_value': result.get('old_value'),
                         'new_value': new_value,
@@ -460,7 +462,7 @@ def api_shortage():
         
         # 按零件類型統計
         part_stats = {}
-        for part_type in ['工作台', '底座', '橫樑', '立柱']:
+        for part_type in ['底座', '工作台', '橫樑', '立柱']:
             type_records = [x for x in shortage_list if x['零件類型'] == part_type]
             type_shortage = [x for x in type_records if x['缺料數量'] > 0]
             part_stats[part_type] = {
@@ -567,6 +569,7 @@ def stock_in():
         supplier = data.get('supplier')
         work_order_code = data.get('work_order_code')
         barcode = data.get('barcode')
+        purchase_order = data.get('purchase_order')
         
         if not part_name or not quantity:
             return jsonify({'success': False, 'error': '缺少必要參數'}), 400
@@ -580,7 +583,8 @@ def stock_in():
             supplier=supplier, 
             user=current_user.username,
             work_order_code=work_order_code,
-            barcode=barcode
+            barcode=barcode,
+            purchase_order=purchase_order
         )
         
         if result['success']:
@@ -616,7 +620,15 @@ def stock_out():
         # 調用 inventory.py 中的出庫函數
         from ..models.inventory import stock_out_product
         supplier = data.get('supplier')
-        result = stock_out_product(part_name, work_order, quantity, model, purchase_order, supplier)
+        result = stock_out_product(
+            part_name=part_name, 
+            work_order=work_order, 
+            quantity=quantity, 
+            model=model, 
+            purchase_order=purchase_order, 
+            supplier=supplier,
+            user=current_user.username
+        )
         
         if result['success']:
             # 通知所有客戶端更新數據
@@ -656,7 +668,7 @@ def export_inventory():
             top=Side(style='thin'),  bottom=Side(style='thin')
         )
 
-        headers = ['機型', '工作台', '底座', '橫樑', '立柱']
+        headers = ['機型', '底座', '工作台', '橫樑', '立柱', '定樑']
 
         # 標頭列
         for col_idx, h in enumerate(headers, 1):
@@ -671,10 +683,11 @@ def export_inventory():
             alt_fill = PatternFill('solid', fgColor='EEF2FF') if row_idx % 2 == 0 else None
             vals = [
                 item.get('機型', ''),
-                item.get('工作台', 0),
                 item.get('底座',   0),
+                item.get('工作台', 0),
                 item.get('橫樑',   0),
                 item.get('立柱',   0),
+                item.get('定樑',   0),
             ]
             for col_idx, val in enumerate(vals, 1):
                 cell = ws.cell(row=row_idx, column=col_idx, value=val if val is not None else 0)
@@ -735,8 +748,38 @@ def api_update_lifting():
 @api_bp.route('/lifting/history', methods=['GET'])
 def api_lifting_history():
     from ..models.lifting import get_lifting_history
+    from collections import Counter
+    
+    month = request.args.get('month') # 格式: YYYY-MM
     history = get_lifting_history()
+    
+    # 篩選月份
+    if month:
+        history = [h for h in history if h.get('timestamp', '').startswith(month)]
+        
+    # 計算借用 TOP 5 (只統計「領用」動作)
+    borrow_actions = [h for h in history if h.get('action') == '領用']
+    item_counts = Counter([h.get('item_id') for h in borrow_actions])
+    
+    # 取得完整的吊具清單以供對照類別 (選用)
+    top_5 = []
+    for item_id, count in item_counts.most_common(5):
+        # 從歷史紀錄中找出該編號對應的類別
+        category = "未知"
+        for h in history:
+            if h.get('item_id') == item_id:
+                category = h.get('category', '未知')
+                break
+                
+        top_5.append({
+            'item_id': item_id,
+            'count': count,
+            'category': category
+        })
+        
     return jsonify({
         'success': True,
-        'history': history
+        'history': history,
+        'top_5': top_5,
+        'query_month': month
     })

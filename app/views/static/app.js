@@ -11,6 +11,9 @@ let currentFactory = 'all';  // 當前選中的工廠
 let allShortageMap = {}; // 儲存缺料狀態 {OrderNo: [PartTypes]}
 let tableFilterMode = 'shortage'; // 'shortage', 'active', 'all'
 
+// 鑄件顯示順序
+const PART_ORDER = ['底座', '工作台', '橫樑', '立柱', '定樑'];
+
 // 翻譯字典
 const TRANSLATIONS = {
     zh: {
@@ -21,10 +24,11 @@ const TRANSLATIONS = {
         TITLE_OVERVIEW: '📦 鑄件庫存總覽',
         TITLE_DETAILS: '📝 機型庫存明細',
         TH_MODEL: '機型',
-        TH_WORKTABLE: '工作台',
         TH_BASE: '底座',
+        TH_WORKTABLE: '工作台',
         TH_CROSSBEAM: '橫樑',
         TH_COLUMN: '立柱',
+        TH_FIXEDBEAM: '定樑',
         LAST_UPDATE: '最後更新',
         LOADING: '載入中...',
         LOAD_FAILED: '載入失敗，請重新整理',
@@ -41,6 +45,7 @@ const TRANSLATIONS = {
         PART_WORKTABLE: '工作台',
         PART_CROSSBEAM: '橫樑',
         PART_COLUMN: '立柱',
+        PART_FIXEDBEAM: '定樑',
         KEY_RAW: '素材',
         KEY_WIP: '在製品',
         KEY_P1: '製程一',
@@ -48,7 +53,6 @@ const TRANSLATIONS = {
         KEY_P3: '製程三',
         KEY_W1: 'W1',
         KEY_W2: 'W2',
-        KEY_W3: 'W3',
         KEY_W4: 'W4',
         KEY_M3: 'M3',
         KEY_M4: 'M4',
@@ -78,10 +82,11 @@ const TRANSLATIONS = {
         TITLE_OVERVIEW: '📦 Inventory Overview',
         TITLE_DETAILS: '📝 Stock Details by Model',
         TH_MODEL: 'Model',
-        TH_WORKTABLE: 'Worktable',
         TH_BASE: 'Base',
+        TH_WORKTABLE: 'Worktable',
         TH_CROSSBEAM: 'Crossbeam',
         TH_COLUMN: 'Column',
+        TH_FIXEDBEAM: 'Fixed Beam',
         LAST_UPDATE: 'Last Updated',
         LOADING: 'Loading...',
         LOAD_FAILED: 'Load Failed, please refresh',
@@ -105,7 +110,6 @@ const TRANSLATIONS = {
         KEY_P3: 'Proc. 3',
         KEY_W1: 'W1',
         KEY_W2: 'W2',
-        KEY_W3: 'W3',
         KEY_W4: 'W4',
         KEY_M3: 'M3',
         KEY_M4: 'M4',
@@ -134,7 +138,8 @@ const PART_ICONS = {
     '底座': '🔲',
     '工作台': '🔳',
     '橫樑': '📏',
-    '立柱': '🏛️'
+    '立柱': '🏛️',
+    '定樑': '🏗️'
 };
 
 // 鍵值對應 (Backend Key -> Translation Key)
@@ -143,6 +148,7 @@ const KEY_MAP = {
     '工作台': 'PART_WORKTABLE',
     '橫樑': 'PART_CROSSBEAM',
     '立柱': 'PART_COLUMN',
+    '定樑': 'PART_FIXEDBEAM',
     '素材': 'KEY_RAW',
     '半品': 'KEY_WIP',
     '製程一': 'KEY_P1',
@@ -150,7 +156,6 @@ const KEY_MAP = {
     '製程三': 'KEY_P3',
     'W1': 'KEY_W1',
     'W2': 'KEY_W2',
-    'W3': 'KEY_W3',
     'W4': 'KEY_W4',
     '製程四': 'KEY_P4',
     'W4': 'KEY_W4',
@@ -217,8 +222,8 @@ function updateStaticUI() {
         'titleOverview': 'TITLE_OVERVIEW',
         'titleDetails': 'TITLE_DETAILS',
         'thModel': 'TH_MODEL',
-        'thWorktable': 'TH_WORKTABLE',
         'thBase': 'TH_BASE',
+        'thWorktable': 'TH_WORKTABLE',
         'thCrossbeam': 'TH_CROSSBEAM',
         'thColumn': 'TH_COLUMN'
     };
@@ -445,6 +450,13 @@ function renderSupplyDemand(data) {
         return;
     }
 
+    // 強制依 PART_ORDER 排序
+    data.sort((a, b) => {
+        const indexA = PART_ORDER.indexOf(a.鑄件);
+        const indexB = PART_ORDER.indexOf(b.鑄件);
+        return (indexA > -1 ? indexA : 99) - (indexB > -1 ? indexB : 99);
+    });
+
     container.innerHTML = data.map(item => {
         let statusKey = 'STATUS_WARNING';
         if (item.差異 >= 0) {
@@ -506,7 +518,14 @@ function renderInventory(data) {
         return;
     }
 
-    container.innerHTML = Object.entries(data).map(([name, count]) => `
+    // 將物件轉換為陣列並依 PART_ORDER 排序
+    const sortedEntries = Object.entries(data).sort((a, b) => {
+        const indexA = PART_ORDER.indexOf(a[0]);
+        const indexB = PART_ORDER.indexOf(b[0]);
+        return (indexA > -1 ? indexA : 99) - (indexB > -1 ? indexB : 99);
+    });
+
+    container.innerHTML = sortedEntries.map(([name, count]) => `
         <div class="inventory-item" onclick="location.href='/casting/${name}'">
             <div class="inventory-icon">${PART_ICONS[name] || '📦'}</div>
             <div class="inventory-name">${tDynamic(name)}</div>
@@ -700,10 +719,11 @@ function renderOrdersTable(orders) {
                 <td>${order.生產開始 || '-'}</td>
                 <td>${order.生產結束 || '-'}</td>
                 <td>${order.工廠 === 'main' ? '本廠' : (order.工廠 === 'factory3' ? '三廠' : order.工廠)}</td>
-                <td>${getDisplayValue('工作台', order.需求_工作台)}</td>
                 <td>${getDisplayValue('底座', order.需求_底座)}</td>
+                <td>${getDisplayValue('工作台', order.需求_工作台)}</td>
                 <td>${getDisplayValue('橫樑', order.需求_橫樑)}</td>
                 <td>${getDisplayValue('立柱', order.需求_立柱)}</td>
+                <td>${getDisplayValue('定樑', order.需求_定樑)}</td>
                 <td title="${order.特規備註 || ''}">${truncateText(order.特規備註, 10)}</td>
                 <td><span class="status-tag ${statusClass}">${statusText}</span></td>
             </tr>
@@ -726,10 +746,11 @@ function renderInventoryDetails(details) {
     tbody.innerHTML = details.map(item => `
         <tr>
             <td><strong>${item.機型}</strong></td>
-            <td>${formatCount(item.工作台)}</td>
             <td>${formatCount(item.底座)}</td>
+            <td>${formatCount(item.工作台)}</td>
             <td>${formatCount(item.橫樑)}</td>
             <td>${formatCount(item.立柱)}</td>
+            <td>${formatCount(item.定樑)}</td>
         </tr>
     `).join('');
 }
@@ -956,7 +977,7 @@ async function showSupplyDetailModal(partName) {
         // 根據 CONFIGS 取得該零件的欄位定義
         const configs = {
             '底座': ['素材', 'M4', 'M3', '成品研磨'],
-            '工作台': ['素材', 'W1', 'W2', 'W3', 'W4', '成品'],
+            '工作台': ['素材', 'W1', 'W2', 'W4', '成品'],
             '橫樑': ['素材', 'M6', 'M5', '成品研磨'],
             '立柱': ['素材', '半品', '成品銑工', '成品研磨']
         };
