@@ -755,8 +755,11 @@
                 <h1 id="appTitle">協鴻工業 加工鑄件看板系統</h1>
                 <nav class="main-nav">
                     <a href="{{ url_for('main.index') }}" class="nav-link" id="navInventory">庫存看板</a>
+                    {% if current_user.is_authenticated and current_user.is_admin() %}
                     <a href="{{ url_for('main.orders_page') }}" class="nav-link" id="navOrders">工單需求</a>
                     <a href="{{ url_for('main.shortage_page') }}" class="nav-link" id="navShortage">缺料分析</a>
+                    <a href="{{ url_for('main.material_request_page') }}" class="nav-link">物料申請</a>
+                    {% endif %}
                 </nav>
             </div>
             <div class="header-right">
@@ -851,7 +854,12 @@
                         {% elif header == headers[-1] %}
                         <td class="total-col" style="padding-right: 28px;">
                             <span>{{ row[header] if row[header] else 0 }}</span>
-                            <span class="cell-info-icon" onclick='showCellHistory({{ row["品號"]|tojson }}, {{ header|tojson }}, {{ row["機型"]|tojson }})' title="點擊查看採購編號與工單詳情">🔎</span>
+                            <span class="cell-info-icon" 
+                                  data-id="{{ row['品號'] }}" 
+                                  data-header="{{ header }}" 
+                                  data-model="{{ row['機型'] }}"
+                                  onclick="showCellHistoryFromEl(this)" 
+                                  title="點擊查看詳情">🔎</span>
                         </td>
                         {% else %}
                         <td style="padding-right: 28px;">
@@ -1338,28 +1346,56 @@
             if (modal) modal.style.display = 'none';
         }
 
+        function showCellHistoryFromEl(el) {
+            const itemId = el.getAttribute('data-id');
+            const field = el.getAttribute('data-header');
+            const modelName = el.getAttribute('data-model');
+            showCellHistory(itemId, field, modelName);
+        }
+
         function showCellHistory(itemId, field, modelName) {
+            const queryId = (itemId && itemId !== 'null' && itemId !== 'N/A') ? itemId : modelName;
+            
+            if (!queryId || queryId === 'null' || queryId === 'N/A') {
+                alert('錯誤：無法取得品號或機型，請確認資料來源是否完整');
+                return;
+            }
             const modal = document.getElementById('cellHistoryModal');
             if (modal) {
                 modal.classList.add('active');
-                document.getElementById('cellHistoryTitle').textContent = `📋 ${modelName} 庫存來源明細`;
+                document.getElementById('cellHistoryTitle').textContent = `📋 ${modelName || '未知機型'} 庫存來源明細`;
                 const info = document.getElementById('cellHistoryInfo');
-                info.innerHTML = `品號：<strong>${itemId}</strong> | 欄位：<strong>${field}</strong> 的最近異動記錄`;
+                info.innerHTML = `品號：<strong>${itemId || '(未設定)'}</strong> | 機型：<strong>${modelName || '-'}</strong> | 欄位：<strong>${field}</strong> 的最近異動記錄`;
                 
                 const tableBody = document.getElementById('cellHistoryTableBody');
                 tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">載入中...</td></tr>';
 
                 const encodedPartName = encodeURIComponent(partName);
-                const encodedItemId = encodeURIComponent(itemId);
+                const encodedItemId = encodeURIComponent(queryId);
                 
                 fetch(`/api/inventory/history/${encodedPartName}/${encodedItemId}`)
-                    .then(res => res.json())
+                    .then(res => {
+                        if (!res.ok) throw new Error(`伺服器回傳錯誤 (${res.status})`);
+                        return res.json();
+                    })
                     .then(data => {
                         if (!data.history || data.history.length === 0) {
                             tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #999;">目前無此格的相關異動記錄</td></tr>';
                             return;
                         }
-                        const filtered = data.history.filter(h => h.field === field || h.field.startsWith(field + ' ('));
+                        let filtered = data.history.filter(h => h.field === field || h.field.startsWith(field + ' ('));
+                        
+                        if (field === '素材') {
+                            // 素材僅顯示入庫資料 (new > old)
+                            filtered = filtered.filter(h => (h.new_value ?? 0) > (h.old_value ?? 0));
+                        } else if (field.includes('成品')) {
+                            // 成品相關欄位僅顯示出庫資料 (new < old)
+                            filtered = filtered.filter(h => (h.new_value ?? 0) < (h.old_value ?? 0));
+                        } else if (field !== '品號' && field !== '機型') {
+                            // 中間製程 (M1~M6, 銑工, 研磨等) 顯示「轉換」紀錄或「庫存增加(入庫)」紀錄
+                            filtered = filtered.filter(h => (h.note && h.note.includes('轉換')) || (h.new_value ?? 0) > (h.old_value ?? 0));
+                        }
+
                         if (filtered.length === 0) {
                             tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #999;">目前無此格的相關異動記錄</td></tr>';
                             return;

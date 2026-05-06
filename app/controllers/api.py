@@ -69,14 +69,20 @@ def api_inventory():
     return jsonify(data)
 
 @api_bp.route('/orders')
+@login_required
 def api_orders():
+    if not current_user.is_admin():
+        return jsonify({'error': '權限不足'}), 403
     data = load_orders()
     data['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     return jsonify(data)
 
 @api_bp.route('/orders/finished/requirements', methods=['GET'])
+@login_required
 def api_finished_orders_requirements():
     """一次性獲取系統中所有 1 開頭 (成品) 工單的物料需求明細"""
+    if not current_user.is_admin():
+        return jsonify({'error': '權限不足'}), 403
     try:
         import pandas as pd
         from ..models.order import get_picking_data, PICKING_CACHE
@@ -449,8 +455,11 @@ def api_part_allocation(part_number):
     return jsonify(data)
 
 @api_bp.route('/shortage')
+@login_required
 def api_shortage():
     """缺料分析 API"""
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'error': '權限不足'}), 403
     from ..models.shortage import calculate_shortage
     
     try:
@@ -495,8 +504,11 @@ def api_shortage():
 
 
 @api_bp.route('/shortage/critical/<part_type>')
+@login_required
 def api_shortage_critical(part_type):
     """取得指定零件類型中「有缺料且完全無素材」的清單（供首頁不足Modal）"""
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'error': '權限不足'}), 403
     from ..models.shortage import calculate_shortage
     try:
         shortage_list = calculate_shortage()
@@ -642,8 +654,11 @@ def stock_out():
 
 
 @api_bp.route('/export/models_inventory')
+@login_required
 def export_inventory():
     """匯出機型庫存明細為 Excel（單一工作表）"""
+    if not current_user.is_admin():
+        return jsonify({'error': '權限不足：只有管理員可以匯出 Excel'}), 403
     import io
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -734,8 +749,12 @@ def api_update_lifting():
     category = req.get('category')
     item_id = req.get('id')
     action = req.get('action') # 'borrow' or 'return'
-    user_name = current_user.username
     
+    # 優先使用中文名稱寫入 Excel
+    user_name = getattr(current_user, 'chinese_name', '')
+    if not user_name:
+        user_name = current_user.username
+        
     if not all([category, item_id, action]):
         return jsonify({'success': False, 'error': 'Missing parameters'})
         

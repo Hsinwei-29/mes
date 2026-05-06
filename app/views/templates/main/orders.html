@@ -109,8 +109,11 @@
                 <h1>協鴻工業 加工鑄件看板系統</h1>
                 <nav class="main-nav">
                     <a href="{{ url_for('main.index') }}" class="nav-link">庫存看板</a>
+                    {% if current_user.is_authenticated and current_user.is_admin() %}
                     <a href="{{ url_for('main.orders_page') }}" class="nav-link active">工單需求</a>
                     <a href="{{ url_for('main.shortage_page') }}" class="nav-link">缺料分析</a>
+                    <a href="{{ url_for('main.material_request_page') }}" class="nav-link">物料申請</a>
+                    {% endif %}
                     <a href="{{ url_for('main.lifting_page') }}" class="nav-link">吊具管理</a>
                 </nav>
             </div>
@@ -201,7 +204,7 @@
         </main>
     </div>
 
-    <script src="{{ url_for('static', filename='app.js') }}?v=20260402_1105"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v=20260504_1500"></script>
 </body>
 
 </html>

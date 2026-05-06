@@ -151,7 +151,7 @@ def get_casting_inventory():
         }
         semi_keys = {
             '底座': ['素材', 'M4', 'M3'],
-            '工作台': ['素材', 'W1', 'W2', 'W3', 'W4'],
+            '工作台': ['素材', 'W1', 'W2', 'W4'],
             '橫樑': ['素材', 'M6', 'M5'],
             '立柱': ['素材', '半品', '成品銑工']
         }
@@ -327,6 +327,7 @@ def calculate_shortage():
                         '生產開始': start_date,
                         '生產結束': end_date,
                         '品號': part_number,
+                        '機型': casting_inventory[part_number].get('機型', '') if part_number in casting_inventory else '',
                         '物料說明': part_desc,
                         '零件類型': part_type,
                         '需求數量': demand_qty,
@@ -442,7 +443,7 @@ def get_part_allocation(part_number):
             
         return {
             'part_number': part_number,
-            'part_desc': part_demands[0]['物料說明'],
+            'part_desc': part_demands[0].get('機型', part_demands[0].get('物料說明', part_number)),
             'allocation': allocation_results,
             'summary': {
                 'stock': current_stock,

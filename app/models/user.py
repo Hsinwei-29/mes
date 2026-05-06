@@ -5,12 +5,13 @@ import os
 from datetime import datetime
 
 class User(UserMixin):
-    def __init__(self, id, username, password_hash, role='user', created_at=None):
+    def __init__(self, id, username, password_hash, role='user', created_at=None, chinese_name=''):
         self.id = id
         self.username = username
         self.password_hash = password_hash
         self.role = role
         self.created_at = created_at or datetime.now().isoformat()
+        self.chinese_name = chinese_name
     
     def check_password(self, password):
         """驗證密碼"""
@@ -27,7 +28,8 @@ class User(UserMixin):
             'username': self.username,
             'password_hash': self.password_hash,
             'role': self.role,
-            'created_at': self.created_at
+            'created_at': self.created_at,
+            'chinese_name': self.chinese_name
         }
     
     @staticmethod
@@ -69,7 +71,7 @@ class User(UserMixin):
         return None
     
     @staticmethod
-    def create(username, password, role='user'):
+    def create(username, password, role='user', chinese_name=''):
         """建立新使用者"""
         users = User.load_all()
         
@@ -82,7 +84,7 @@ class User(UserMixin):
         
         # 建立新使用者
         password_hash = generate_password_hash(password)
-        new_user = User(new_id, username, password_hash, role)
+        new_user = User(new_id, username, password_hash, role, chinese_name=chinese_name)
         
         # 儲存
         users.append(new_user)
@@ -98,6 +100,12 @@ class User(UserMixin):
         with open(users_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     
+    @staticmethod
+    def get_name_map():
+        """取得 使用者名稱 -> 中文名字 的對照表"""
+        users = User.load_all()
+        return {u.username: (u.chinese_name if (hasattr(u, 'chinese_name') and u.chinese_name) else u.username) for u in users}
+
     @staticmethod
     def init_default_users():
         """初始化預設使用者"""

@@ -98,7 +98,7 @@ def get_users():
     """取得使用者列表 API"""
     users = User.load_all()
     return jsonify({
-        'users': [{'id': u.id, 'username': u.username, 'role': u.role, 'created_at': u.created_at} for u in users]
+        'users': [{'id': u.id, 'username': u.username, 'role': u.role, 'created_at': u.created_at, 'chinese_name': getattr(u, 'chinese_name', '')} for u in users]
     })
 
 @auth_bp.route('/admin/users', methods=['POST'])
@@ -110,16 +110,48 @@ def create_user():
     username = data.get('username')
     password = data.get('password')
     role = data.get('role', 'user')
+    chinese_name = data.get('chinese_name', '')
     
     if not username or not password:
         return jsonify({'error': '使用者名稱和密碼為必填'}), 400
     
-    user = User.create(username, password, role)
+    user = User.create(username, password, role, chinese_name=chinese_name)
     
     if user:
-        return jsonify({'success': True, 'user': {'id': user.id, 'username': user.username, 'role': user.role}})
+        return jsonify({'success': True, 'user': {'id': user.id, 'username': user.username, 'role': user.role, 'chinese_name': user.chinese_name}})
     else:
         return jsonify({'error': '使用者名稱已存在'}), 400
+
+@auth_bp.route('/admin/users/<user_id>', methods=['PUT'])
+@login_required
+@admin_required
+def update_user(user_id):
+    """更新使用者 API"""
+    data = request.get_json()
+    chinese_name = data.get('chinese_name')
+    role = data.get('role')
+    
+    users = User.load_all()
+    updated = False
+    for user in users:
+        if user.id == user_id:
+            if chinese_name is not None:
+                user.chinese_name = chinese_name
+            if role is not None:
+                user.role = role
+            updated = True
+            break
+    
+    if updated:
+        # 保護 hsinwei 帳戶，確保其角色永遠是 admin
+        for user in users:
+            if user.username == 'hsinwei':
+                user.role = 'admin'
+        
+        User.save_all(users)
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': '找不到使用者'}), 404
 
 @auth_bp.route('/admin/users/<user_id>', methods=['DELETE'])
 @login_required
@@ -130,6 +162,12 @@ def delete_user(user_id):
         return jsonify({'error': '無法刪除自己的帳戶'}), 400
     
     users = User.load_all()
+    
+    # 禁止刪除 hsinwei 帳戶
+    target_user = next((u for u in users if u.id == user_id), None)
+    if target_user and target_user.username == 'hsinwei':
+        return jsonify({'error': '系統管理員帳戶「hsinwei」受保護，無法刪除'}), 400
+        
     users = [u for u in users if u.id != user_id]
     User.save_all(users)
     

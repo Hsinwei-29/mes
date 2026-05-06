@@ -1,5 +1,5 @@
-from flask import Blueprint, render_template
-from flask_login import current_user
+from flask import Blueprint, render_template, redirect, url_for, flash
+from flask_login import current_user, login_required
 from datetime import datetime
 
 main_bp = Blueprint('main', __name__)
@@ -18,8 +18,12 @@ def index():
     return render_template('main/index.html')
 
 @main_bp.route('/orders')
+@login_required
 def orders_page():
     """工單需求頁面"""
+    if not current_user.is_admin():
+        flash('權限不足：只有管理員可以訪問工單需求頁面', 'error')
+        return redirect(url_for('main.index'))
     return render_template('main/orders.html')
 
 @main_bp.route('/casting/<part_type>')
@@ -52,8 +56,12 @@ def casting_page(part_type):
                           timestamp=timestamp)
 
 @main_bp.route('/shortage')
+@login_required
 def shortage_page():
     """缺料分析頁面"""
+    if not current_user.is_admin():
+        flash('權限不足：只有管理員可以訪問缺料分析頁面', 'error')
+        return redirect(url_for('main.index'))
     return render_template('main/shortage.html')
 
 @main_bp.route('/part/<part_type>')
@@ -66,7 +74,7 @@ def part_detail_page(part_type):
     # 計算半品和成品總數
     semi_finished_fields = {
         '底座': ['素材', 'M4', 'M3'],
-        '工作台': ['素材', 'W1', 'W2', 'W3', 'W4'],
+        '工作台': ['素材', 'W1', 'W2', 'W4'],
         '橫樑': ['素材', 'M6', 'M5'],
         '立柱': ['素材', '半品', '成品銑工']
     }
@@ -120,6 +128,15 @@ def part_detail_page(part_type):
 def model_search_page():
     """機型搜尋頁面"""
     return render_template('main/model_search.html')
+
+@main_bp.route('/material-request')
+@login_required
+def material_request_page():
+    """物料申請頁面"""
+    if not current_user.is_admin():
+        flash('權限不足：只有管理員可以訪問物料申請頁面', 'error')
+        return redirect(url_for('main.index'))
+    return render_template('main/material_request.html')
 
 @main_bp.route('/lifting')
 def lifting_page():

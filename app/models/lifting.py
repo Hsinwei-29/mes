@@ -60,7 +60,7 @@ def load_lifting_inventory():
             pass
 
     try:
-        xl = pd.ExcelFile(file_path, engine='calamine')
+        xl = pd.ExcelFile(file_path, engine='openpyxl')
         data = {}
         
         # 輔助：放置位置排序關鍵值
@@ -90,28 +90,48 @@ def load_lifting_inventory():
                 df = df.fillna('')
                 df = ensure_columns(df)
                 
+                # Get name map
+                from .user import User
+                name_map = User.get_name_map()
+                
                 # Convert DataFrame to list of dicts
                 items = []
                 for _, row in df.iterrows():
                     # 吊具編號是唯一識別
+                    # 吊具編號是唯一識別
                     item_id = str(row.get('吊具編號', '')).strip()
-                    if not item_id or item_id == 'nan':
+                    if item_id.endswith('.0'):
+                        item_id = item_id[:-2]
+                    if not item_id or item_id in ['nan', 'N/A', 'None']:
                         continue
                     
                     loc_val = str(row.get('放置位置', '')).strip()
+                    replace_map = {
+                        '第一區': '第1區', '第二區': '第2區', '第三區': '第3區', '第四區': '第4區', '第五區': '第5區',
+                        '第六區': '第6區', '第七區': '第7區', '第八區': '第8區', '第九區': '第9區', '第十區': '第10區'
+                    }
+                    for k, v in replace_map.items():
+                        loc_val = loc_val.replace(k, v)
                         
+                    raw_borrower = str(row.get('目前借用人', '')).strip()
+                    borrower_display = name_map.get(raw_borrower, raw_borrower)
+
                     items.append({
                         'category': sheet,
                         'id': item_id,
                         'spec': str(row.get('吊具規格 /重量/長度', '')),
                         'location': loc_val,
                         'status': str(row.get('使用狀態', '')),
-                        'borrower': str(row.get('目前借用人', '')),
+                        'borrower': borrower_display,
+                        'borrower_raw': raw_borrower,
                         'borrow_date': str(row.get('借用日期', ''))
                     })
                 
-                # 排序：按放置位置 (normalized)
-                items.sort(key=lambda x: get_location_sort_val(x['location']))
+                # 按是否借用中 (借用中排在最前面)，再按放置位置 (第1區、第2區...) 排序
+                items.sort(key=lambda x: (
+                    0 if x['status'] == '借用中' or x['borrower_raw'] else 1,
+                    get_location_sort_val(x['location'])[0]
+                ))
                 
                 data[sheet] = items
                 
@@ -142,12 +162,16 @@ def log_lifting_action(category, item_id, action, user_name):
         except:
             history = []
             
+    from .user import User
+    name_map = User.get_name_map()
+    user_display = name_map.get(user_name, user_name)
+    
     record = {
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'category': category,
         'item_id': item_id,
         'action': '領用' if action == 'borrow' else '歸還',
-        'user': user_name
+        'user': user_display
     }
     history.insert(0, record)
     # 限制紀錄數量
@@ -163,7 +187,15 @@ def get_lifting_history():
     if os.path.exists(history_file):
         try:
             with open(history_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                history = json.load(f)
+                
+            # 確保舊紀錄中的英文名字也能對應到目前的中文名 (選用，但較貼心)
+            from .user import User
+            name_map = User.get_name_map()
+            for h in history:
+                if h.get('user') in name_map:
+                    h['user'] = name_map[h['user']]
+            return history
         except:
             return []
     return []
@@ -207,7 +239,10 @@ def update_lifting_status(category, item_id, action, user_name):
 
         row_found = None
         for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-            if str(row[id_col]).strip() == str(item_id):
+            curr_id = str(row[id_col]).strip() if row[id_col] is not None else ''
+            if curr_id.endswith('.0'):
+                curr_id = curr_id[:-2]
+            if curr_id == str(item_id):
                 row_found = row_idx
                 break
 

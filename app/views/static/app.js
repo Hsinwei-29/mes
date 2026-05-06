@@ -492,12 +492,12 @@ function renderSupplyDemand(data) {
                         <div class="stat-value stock">${item.成品}</div>
                     </div>
                     <div class="stat-item" 
-                         style="cursor: pointer; transition: all 0.2s ease; border-radius: 6px; padding: 4px;" 
-                         onclick="event.stopPropagation(); window.location.href='/shortage?part=${encodeURIComponent(item.鑄件)}'" 
-                         onmouseover="this.style.background='rgba(37,99,235,0.1)'; this.style.outline='1.5px solid #2563eb';" 
-                         onmouseout="this.style.background=''; this.style.outline='';"
-                         title="點擊查看缺料分析">
-                        <div class="stat-label">${t('DEMAND')} 🔗</div>
+                         style="padding: 4px; border-radius: 6px; ${window.IS_ADMIN ? 'cursor: pointer; transition: all 0.2s ease;' : ''}" 
+                         ${window.IS_ADMIN ? `onclick="event.stopPropagation(); window.location.href='/shortage?part=${encodeURIComponent(item.鑄件)}'"` : ''}
+                         ${window.IS_ADMIN ? `onmouseover="this.style.background='rgba(37,99,235,0.1)'; this.style.outline='1.5px solid #2563eb';"` : ''}
+                         ${window.IS_ADMIN ? `onmouseout="this.style.background=''; this.style.outline='';"` : ''}
+                         ${window.IS_ADMIN ? 'title="點擊查看缺料分析"' : ''}>
+                        <div class="stat-label">${t('DEMAND')} ${window.IS_ADMIN ? '🔗' : ''}</div>
                         <div class="stat-value demand">${item.需求}</div>
                     </div>
                 </div>

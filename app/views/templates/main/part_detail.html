@@ -158,12 +158,15 @@
                 <div class="label">成品數</div>
                 <div class="value" style="color: #10b981;">{{ total_finished }}</div>
             </div>
-            <div class="summary-card" style="cursor: pointer; transition: all 0.2s ease;"
+            <div class="summary-card" 
+                {% if current_user.is_authenticated and current_user.is_admin() %}
+                style="cursor: pointer; transition: all 0.2s ease;"
                 onclick="window.location.href='/shortage?part={{ part_name }}'"
                 onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 16px rgba(139, 92, 246, 0.3)';"
                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)';"
-                title="點擊查看缺料分析">
-                <div class="label">需求量</div>
+                title="點擊查看缺料分析"
+                {% endif %}>
+                <div class="label">需求量 {% if current_user.is_authenticated and current_user.is_admin() %}🔗{% endif %}</div>
                 <div class="value" style="color: #8b5cf6;">{{ total_demand }}</div>
             </div>
         </div>

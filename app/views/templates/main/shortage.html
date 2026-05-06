@@ -197,8 +197,11 @@
                 <h1>協鴻工業 加工鑄件看板系統</h1>
                 <nav class="main-nav">
                     <a href="{{ url_for('main.index') }}" class="nav-link">庫存看板</a>
+                    {% if current_user.is_authenticated and current_user.is_admin() %}
                     <a href="{{ url_for('main.orders_page') }}" class="nav-link">工單需求</a>
                     <a href="{{ url_for('main.shortage_page') }}" class="nav-link active">缺料分析</a>
+                    <a href="{{ url_for('main.material_request_page') }}" class="nav-link">物料申請</a>
+                    {% endif %}
                     <a href="{{ url_for('main.lifting_page') }}" class="nav-link">吊具管理</a>
                 </nav>
             </div>
@@ -228,15 +231,15 @@
             <div class="stats-grid" style="margin-bottom: 2rem;">
                 <div class="stat-card" style="background: white; border: 2px solid #e0e0e0; color: #333;">
                     <div class="stat-label" style="color: #666;">
-                        <span class="part-icon">🔳</span>工作台
-                    </div>
-                    <div class="stat-value" id="stockWorktable" style="color: #0088cc;">-</div>
-                </div>
-                <div class="stat-card" style="background: white; border: 2px solid #e0e0e0; color: #333;">
-                    <div class="stat-label" style="color: #666;">
                         <span class="part-icon">🔲</span>底座
                     </div>
                     <div class="stat-value" id="stockBase" style="color: #0088cc;">-</div>
+                </div>
+                <div class="stat-card" style="background: white; border: 2px solid #e0e0e0; color: #333;">
+                    <div class="stat-label" style="color: #666;">
+                        <span class="part-icon">🔳</span>工作台
+                    </div>
+                    <div class="stat-value" id="stockWorktable" style="color: #0088cc;">-</div>
                 </div>
                 <div class="stat-card" style="background: white; border: 2px solid #e0e0e0; color: #333;">
                     <div class="stat-label" style="color: #666;">
@@ -275,8 +278,8 @@
                     <label>零件類型：</label>
                     <select id="filterPartType">
                         <option value="">全部</option>
-                        <option value="工作台">工作台</option>
                         <option value="底座">底座</option>
+                        <option value="工作台">工作台</option>
                         <option value="橫樑">橫樑</option>
                         <option value="立柱">立柱</option>
                     </select>
@@ -306,6 +309,7 @@
                             <th>客戶名稱</th>
                             <th>生產開始</th>
                             <th>生產結束</th>
+                            <th>機型</th>
                             <th>品號</th>
                             <th>物料說明</th>
                             <th>零件類型</th>
@@ -398,6 +402,7 @@
                     <td>${item.客戶名稱}</td>
                     <td>${formatDate(item.生產開始)}</td>
                     <td>${formatDate(item.生產結束)}</td>
+                    <td style="font-weight: 600; color: #1e40af;">${item.機型 || '-'}</td>
                     <td><code>${item.品號}</code></td>
                     <td>${item.物料說明}</td>
                     <td>${item.零件類型}</td>
@@ -405,7 +410,7 @@
                     <td>${item.已領料}</td>
                     <td><strong>${item.目前缺料}</strong></td>
                     <td>${item.現有庫存}</td>
-                    <td><strong style="color: ${item.缺料數量 > 0 ? '#c00' : '#0a0'}">${item.缺料數量}</strong></td>
+                    <td><strong style="color: ${item.缺料數量 > 0 ? '#c00' : '#0a0'}; ${item.缺料數量 > 0 ? 'cursor: pointer; text-decoration: underline;' : ''}" ${item.缺料數量 > 0 ? `onclick="window.open('/casting/${item.零件類型}?highlight=${item.品號}', '_blank')" title="點擊查看 ${item.零件類型} 製程"` : ''}>${item.缺料數量}</strong></td>
                     <td>${item.特規備註 || '-'}</td>
                     <td>
                         <button class="allocation-btn" onclick="showAllocation('${item.品號}', '${item.工單號碼}')" style="padding: 4px 10px; font-size: 0.85rem; background: #8b5cf6; color: white; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s;">📊 分配</button>
@@ -440,10 +445,11 @@
 
             if (search) {
                 filtered = filtered.filter(item =>
-                    item.工單號碼.toLowerCase().includes(search) ||
-                    item.客戶名稱.toLowerCase().includes(search) ||
-                    item.品號.toLowerCase().includes(search) ||
-                    item.物料說明.toLowerCase().includes(search)
+                    (item.工單號碼 || '').toLowerCase().includes(search) ||
+                    (item.機型 || '').toLowerCase().includes(search) ||
+                    (item.客戶名稱 || '').toLowerCase().includes(search) ||
+                    (item.品號 || '').toLowerCase().includes(search) ||
+                    (item.物料說明 || '').toLowerCase().includes(search)
                 );
             }
 

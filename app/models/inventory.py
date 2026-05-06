@@ -12,21 +12,21 @@ _INVENTORY_CACHE = {'mtime': 0, 'data': None}
 _MASTER_MODEL_CACHE = {'mtime': 0, 'data': None}
 
 def normalize_model_name(model_name):
-    """標準化機型名稱，移除後綴變體"""
+    """標準化機型名稱，移除後綴變體，用於匹配"""
     import re
     if not model_name:
         return model_name
     
-    normalized = str(model_name).strip()
+    normalized = str(model_name).strip().upper() # 轉大寫
     
-    # 移除常見後綴（主底座、副底座、富底座）
-    normalized = re.sub(r'(主底座|副底座|富底座)$', '', normalized)
+    # 移除常見後綴（僅移除「底座」，保留「主底座/副底座」作為區分）
+    normalized = re.sub(r'底座$', '', normalized)
     
-    # 移除括號內容（如 (工作台-鑽孔)）
-    normalized = re.sub(r'\([^)]*\)$', '', normalized)
+    # 移除括號內容（如 (工作台-鑽孔)）- 暫時停用避免誤刪關鍵區分資訊
+    # normalized = re.sub(r'\([^)]*\)$', '', normalized)
     
-    # 清理尾部的連字符、底線和空格
-    normalized = re.sub(r'[-_\s]+$', '', normalized).strip()
+    # 僅移除符號與空格，保留中文字以便區分（如主/副底座）
+    normalized = re.sub(r'[-_\s/.\(\)]', '', normalized)
     
     return normalized
 
@@ -61,6 +61,7 @@ def _get_master_model_list(xl=None):
             xl = pd.ExcelFile(casting_file, engine='openpyxl')
 
         all_models = {}
+        normalized_seen = set()
 
         # 優先從第一個分頁「總數」(index 0) 抓取機型順序
         try:
@@ -74,7 +75,10 @@ def _get_master_model_list(xl=None):
                     if 'VW-X340' in model_str:
                         continue
                     if model_str and model_str not in ['nan', '品號', '機型']:
-                        all_models[model_str] = True
+                        norm = normalize_model_name(model_str)
+                        if norm not in normalized_seen:
+                            all_models[model_str] = True
+                            normalized_seen.add(norm)
         except Exception as e:
             print(f"Error reading Summary sheet: {e}")
 
@@ -91,8 +95,11 @@ def _get_master_model_list(xl=None):
                         if 'VW-X340' in model_str:
                             continue
                             
-                        if model_str and model_str not in all_models and model_str not in ['nan', '品號', '機型']:
-                            all_models[model_str] = True
+                        if model_str and model_str not in ['nan', '品號', '機型']:
+                            norm = normalize_model_name(model_str)
+                            if norm not in normalized_seen:
+                                all_models[model_str] = True
+                                normalized_seen.add(norm)
             except Exception as e:
                 print(f"Error reading {sheet_name}: {e}")
 
@@ -169,8 +176,13 @@ def load_casting_inventory():
 
         # 1. 建立完整機型清單（從所有零件分頁收集）
         master_models = _get_master_model_list(xl=xl)
+        
+        normalized_map = {} # normalized -> canonical name
         for model_str in master_models:
             all_models[model_str] = {'機型': model_str, '底座': 0, '工作台': 0, '橫樑': 0, '立柱': 0, '定樑': 0}
+            norm = normalize_model_name(model_str)
+            if norm and norm not in normalized_map:
+                normalized_map[norm] = model_str
         
         for part_name, sheet_idx in [('底座', 1), ('工作台', 2), ('橫樑', 3), ('立柱', 4), ('定樑', 7)]:
             try:
@@ -195,10 +207,16 @@ def load_casting_inventory():
                         # 排除無效機型
                         if pd.notna(model) and str(model).strip() and str(model).strip() != '品號':
                             model_str = str(model).strip()
+                            # 嘗試使用標準化匹配
+                            norm_key = normalize_model_name(model_str)
+                            if norm_key in normalized_map:
+                                model_str = normalized_map[norm_key]
                             
                             # 初始化該機型的數據
                             if model_str not in all_models:
                                 all_models[model_str] = {'機型': model_str, '底座': 0, '工作台': 0, '橫樑': 0, '立柱': 0, '定樑': 0}
+                                # 更新 mapping 避免重複建立
+                                if norm_key: normalized_map[norm_key] = model_str
                             
                             # 加總所有製程欄位的數量
                             row_total = 0

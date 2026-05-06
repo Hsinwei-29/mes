@@ -23,8 +23,11 @@
                 <h1 id="appTitle">協鴻工業 加工鑄件看板系統</h1>
                 <nav class="main-nav">
                     <a href="{{ url_for('main.index') }}" class="nav-link active" id="navInventory">庫存看板</a>
+                    {% if current_user.is_authenticated and current_user.is_admin() %}
                     <a href="{{ url_for('main.orders_page') }}" class="nav-link" id="navOrders">工單需求</a>
                     <a href="{{ url_for('main.shortage_page') }}" class="nav-link" id="navShortage">缺料分析</a>
+                    <a href="{{ url_for('main.material_request_page') }}" class="nav-link">物料申請</a>
+                    {% endif %}
                     <a href="{{ url_for('main.lifting_page') }}" class="nav-link" id="navLifting">吊具管理</a>
                 </nav>
             </div>
@@ -68,11 +71,13 @@
             <section class="section inventory-details">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                     <h2 class="section-title" id="titleDetails" style="margin-bottom: 0;">📝 機型庫存明細</h2>
+                    {% if current_user.is_authenticated and current_user.is_admin() %}
                     <a href="javascript:void(0)"
                         onclick="window.location.href='/api/export/models_inventory?t=' + new Date().getTime()"
                         class="export-btn" title="匯出機型庫存明細為 Excel">
                         <span style="font-size: 1.1rem;">📊</span> 匯出 Excel
                     </a>
+                    {% endif %}
                 </div>
                 <div class="details-table-wrapper">
                     <table class="details-table" id="detailsTable">
@@ -121,7 +126,10 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='app.js') }}?v=20260402_1105"></script>
+    <script>
+        window.IS_ADMIN = {{ 'true' if current_user.is_authenticated and current_user.is_admin() else 'false' }};
+    </script>
+    <script src="{{ url_for('static', filename='app.js') }}?v=20260504_1500"></script>
 </body>
 
 </html>
