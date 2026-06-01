@@ -418,6 +418,13 @@
                 </div>
 
                 <!-- 出貨申請列表 -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; margin-top: 2rem;">
+                    <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem; color: #2563eb;">📋 出貨紀錄</h3>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <label for="shippingMonthFilter" style="font-size: 0.9rem; font-weight: 600; color: #64748b;">篩選月份：</label>
+                        <input type="month" id="shippingMonthFilter" onchange="renderShipping()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color, #ccc); font-family: inherit; cursor: pointer; color: #333;">
+                    </div>
+                </div>
                 <div style="overflow-x:auto;">
                     <table class="shipping-table">
                         <thead>
@@ -489,6 +496,16 @@
         const res = await fetchFromAPI('/api/material-request/shipping');
         if (res.success) {
             shippingRecords = res.data;
+            
+            // 設定月份選擇器預設為本月
+            const monthFilter = document.getElementById('shippingMonthFilter');
+            if (monthFilter && !monthFilter.value) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                monthFilter.value = `${year}-${month}`;
+            }
+            
             renderShipping();
         }
     }
@@ -716,11 +733,18 @@
     function renderShipping() {
         const tbody = document.getElementById('shippingTableBody');
         if (!tbody) return;
-        if (!shippingRecords.length) {
-            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;padding:2rem;">尚無出貨申請，請填寫上方表單</td></tr>';
+        
+        let filteredRecords = [...shippingRecords];
+        const monthFilter = document.getElementById('shippingMonthFilter');
+        if (monthFilter && monthFilter.value) {
+            filteredRecords = filteredRecords.filter(r => r.shipDate && r.shipDate.startsWith(monthFilter.value));
+        }
+
+        if (!filteredRecords.length) {
+            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;padding:2rem;">該月份尚無出貨紀錄，或尚未填寫表單</td></tr>';
             return;
         }
-        const sorted = [...shippingRecords].sort((a, b) => b.id - a.id);
+        const sorted = filteredRecords.sort((a, b) => b.id - a.id);
         tbody.innerHTML = sorted.map(r => `
             <tr>
                 <td>
