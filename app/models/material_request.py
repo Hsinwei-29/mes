@@ -16,7 +16,16 @@ def load_json(filepath):
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             return json.load(f)
-    except:
+    except Exception as e:
+        print(f"Warning: Error reading {filepath}: {e}")
+        import shutil
+        import time
+        try:
+            backup_file = f"{filepath}.corrupted.{int(time.time())}"
+            shutil.copy2(filepath, backup_file)
+            print(f"Backed up corrupted file to {backup_file}")
+        except:
+            pass
         return []
 
 def save_json(filepath, data):
