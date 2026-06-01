@@ -7,7 +7,7 @@
     <title>{{ part_name }} 製程追蹤 - 加工鑄件看板系統</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" onerror="this.media='all'">
     <style>
         .subheader {
             display: flex;
@@ -764,8 +764,8 @@
             </div>
             <div class="header-right">
                 <button id="langSwitch" class="lang-btn" onclick="toggleLanguage()">EN</button>
-                {% if current_user %}
-                <span class="lang-btn" style="margin-left: 0.5rem; cursor: default;">👤 {{ current_user }}</span>
+                {% if current_user.is_authenticated %}
+                <span class="lang-btn" style="margin-left: 0.5rem; cursor: default;">👤 {{ current_user.chinese_name or current_user.username }}</span>
                 {% if is_admin %}
                 <a href="{{ url_for('auth.admin_dashboard') }}" class="lang-btn" style="margin-left: 0.5rem;">🔐 管理員</a>
                 {% endif %}
@@ -803,7 +803,7 @@
             </div>
             {% elif not is_admin %}
             <div class="login-prompt">
-                <p>⚠️ 僅管理員可編輯數據（當前用戶：{{ current_user }}）</p>
+                <p>⚠️ 僅管理員可編輯數據（當前用戶：{{ current_user.chinese_name or current_user.username }}）</p>
             </div>
             {% endif %}
 
@@ -1120,12 +1120,12 @@
                             <datalist id="stockOutModelList"></datalist>
                         </div>
                         <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">採購編號 (選填)：</label>
-                            <input type="text" id="stockOutPurchaseOrder" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;" placeholder="請輸入採購編號..." autocomplete="off">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">採購編號 <span style="color: #ef4444;">*</span>：</label>
+                            <input type="text" id="stockOutPurchaseOrder" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;" placeholder="請輸入採購編號..." autocomplete="off">
                         </div>
                         <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">工單號碼：</label>
-                            <input type="text" id="stockOutWorkOrder" list="stockOutWorkOrderList" required autocomplete="off" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;" placeholder="載入中...">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">工單號碼 (選填)：</label>
+                            <input type="text" id="stockOutWorkOrder" list="stockOutWorkOrderList" autocomplete="off" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 1rem;" placeholder="請點擊輸入或搜尋工單號碼...">
                             <datalist id="stockOutWorkOrderList"></datalist>
                         </div>
 
@@ -1142,7 +1142,7 @@
             </div>
         </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="{{ url_for('static', filename='socket.io.min.js') }}"></script>
     <script>
         (function() {
             // --- 全域變數初始化 ---
@@ -1380,38 +1380,96 @@
                     })
                     .then(data => {
                         if (!data.history || data.history.length === 0) {
-                            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #999;">目前無此格的相關異動記錄</td></tr>';
+                            tableBody.innerHTML = `<tr>
+                                <td colspan="5" style="text-align: center; padding: 2rem; color: #999;">
+                                    目前無此格的相關異動記錄。<br>
+                                    ${isLoggedIn ? `
+                                    <div style="margin-top: 15px; display: inline-flex; flex-direction: column; gap: 10px; text-align: left; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e1; max-width: 400px; width: 100%; box-sizing: border-box;">
+                                        <strong style="color: #334155; font-size: 0.9rem;">📝 新增此格之來源註記 / 備註：</strong>
+                                        <input type="text" id="initialNoteInput" placeholder="請輸入工單、採購單號或註記..." style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem;" onkeydown="handleInitialNoteKey(event, '${itemId}', '${field}', '${modelName}')">
+                                        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                            <button onclick="submitInitialNote('${itemId}', '${field}', '${modelName}')" style="padding: 6px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 0.85rem; transition: background 0.2s;">確認新增</button>
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                </td>
+                            </tr>`;
                             return;
                         }
                         let filtered = data.history.filter(h => h.field === field || h.field.startsWith(field + ' ('));
                         
                         if (field === '素材') {
-                            // 素材僅顯示入庫資料 (new > old)
-                            filtered = filtered.filter(h => (h.new_value ?? 0) > (h.old_value ?? 0));
+                            // 素材僅顯示入庫資料 (new > old) 或有備註的資料
+                            filtered = filtered.filter(h => (h.new_value ?? 0) > (h.old_value ?? 0) || h.note);
                         } else if (field.includes('成品')) {
-                            // 成品相關欄位僅顯示出庫資料 (new < old)
-                            filtered = filtered.filter(h => (h.new_value ?? 0) < (h.old_value ?? 0));
+                            // 成品相關欄位僅顯示出庫資料 (new < old) 或有備註的資料
+                            filtered = filtered.filter(h => (h.new_value ?? 0) < (h.old_value ?? 0) || h.note);
                         } else if (field !== '品號' && field !== '機型') {
-                            // 中間製程 (M1~M6, 銑工, 研磨等) 顯示「轉換」紀錄或「庫存增加(入庫)」紀錄
-                            filtered = filtered.filter(h => (h.note && h.note.includes('轉換')) || (h.new_value ?? 0) > (h.old_value ?? 0));
+                            // 中間製程 (M1~M6, 銑工, 研磨等) 顯示「轉換」紀錄、庫存增加紀錄、或有備註的資料
+                            filtered = filtered.filter(h => (h.note && h.note.includes('轉換')) || (h.new_value ?? 0) > (h.old_value ?? 0) || h.note);
                         }
 
                         if (filtered.length === 0) {
-                            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #999;">目前無此格的相關異動記錄</td></tr>';
+                            tableBody.innerHTML = `<tr>
+                                <td colspan="5" style="text-align: center; padding: 2rem; color: #999;">
+                                    目前無此格的相關異動記錄。<br>
+                                    ${isLoggedIn ? `
+                                    <div style="margin-top: 15px; display: inline-flex; flex-direction: column; gap: 10px; text-align: left; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e1; max-width: 400px; width: 100%; box-sizing: border-box;">
+                                        <strong style="color: #334155; font-size: 0.9rem;">📝 新增此格之來源註記 / 備註：</strong>
+                                        <input type="text" id="initialNoteInput" placeholder="請輸入工單、採購單號或註記..." style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem;" onkeydown="handleInitialNoteKey(event, '${itemId}', '${field}', '${modelName}')">
+                                        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                            <button onclick="submitInitialNote('${itemId}', '${field}', '${modelName}')" style="padding: 6px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 0.85rem; transition: background 0.2s;">確認新增</button>
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                </td>
+                            </tr>`;
                             return;
                         }
                         tableBody.innerHTML = filtered.map(h => {
                             const diff = (h.new_value ?? 0) - (h.old_value ?? 0);
-                            const action = diff > 0 ? `<span class="badge-in">入庫</span>` : `<span class="badge-out">出庫</span>`;
+                            
+                            // 判斷是否為最後要出庫：
+                            // 1. 欄位包含「成品」且 diff < 0
+                            // 2. 或是備註包含出庫、出廠、出貨等字眼
+                            let isOut = false;
+                            if (h.field && h.field.includes('成品') && diff < 0) {
+                                isOut = true;
+                            }
+                            if (h.note && (h.note.includes('出庫') || h.note.includes('出廠') || h.note.includes('出貨'))) {
+                                isOut = true;
+                            }
+                            
+                            const action = isOut ? `<span class="badge-out">出庫</span>` : `<span class="badge-in">入庫</span>`;
+                            
+                            // 數量顯示處理，若差額為 0（例如初次建檔）則顯示為 1
+                            let displayDiff = diff;
+                            if (diff === 0) {
+                                displayDiff = 1;
+                            }
+                            
+                            let diffText = '';
+                            let diffColor = '#10b981'; // 綠色 (入庫)
+                            if (isOut) {
+                                diffColor = '#ef4444'; // 紅色 (出庫)
+                                diffText = displayDiff < 0 ? `${displayDiff}` : `-${displayDiff}`;
+                            } else {
+                                diffText = displayDiff > 0 ? `+${displayDiff}` : `+${displayDiff}`;
+                            }
                             return `
                                 <tr data-part="${encodedPartName}" data-item="${h.item_id}" data-time="${h.timestamp}" data-field="${h.field}">
                                     <td style="font-size: 0.8rem;">${h.timestamp.split(' ')[0]}<br>${h.timestamp.split(' ')[1]}</td>
                                     <td>${action}</td>
-                                    <td style="font-weight: bold; color: ${diff > 0 ? '#10b981' : '#ef4444'};">${diff > 0 ? '+' : ''}${diff}</td>
+                                    <td style="font-weight: bold; color: ${diffColor};">${diffText}</td>
                                     <td class="note-cell" style="font-size: 0.85rem; text-align: left;">
                                         <div class="note-content-wrapper" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                                             <span class="note-text">${h.note || '-'}</span>
-                                            ${isLoggedIn ? `<button class="edit-note-btn" onclick="startEditNote(this)" title="編輯備註">✏️</button>` : ''}
+                                            ${isLoggedIn ? `
+                                            <div style="display: flex; gap: 6px; align-items: center;">
+                                                <button class="edit-note-btn" onclick="startEditNote(this)" title="編輯備註">✏️</button>
+                                                <button class="delete-note-btn" onclick="deleteHistoryRecord(this, '${itemId}', '${field}', '${modelName}')" title="刪除此筆記錄" style="background: none; border: none; cursor: pointer; padding: 2px 4px; font-size: 0.95rem; filter: grayscale(1); transition: filter 0.2s;" onmouseover="this.style.filter='none'" onmouseout="this.style.filter='grayscale(1)'">🗑️</button>
+                                            </div>
+                                            ` : ''}
                                         </div>
                                     </td>
                                     <td>${h.user}</td>
@@ -1429,6 +1487,94 @@
             const modal = document.getElementById('cellHistoryModal');
             if (modal) modal.classList.remove('active');
         }
+
+        window.handleInitialNoteKey = function(event, itemId, field, modelName) {
+            if (event.key === 'Enter') {
+                submitInitialNote(itemId, field, modelName);
+            }
+        };
+
+        window.submitInitialNote = function(itemId, field, modelName) {
+            const input = document.getElementById('initialNoteInput');
+            if (!input) return;
+            const note = input.value.trim();
+            if (!note) {
+                alert('備註內容不能為空！');
+                return;
+            }
+
+            // 尋找主表格中該行與該欄的目前數值
+            let currentVal = 0;
+            const queryId = (itemId && itemId !== 'null' && itemId !== 'N/A') ? itemId : modelName;
+            let row = document.querySelector(`tr[data-item-id="${queryId}"]`);
+            if (!row) {
+                row = document.querySelector(`tr[data-model-name="${modelName}"]`);
+            }
+            if (row) {
+                const inputEl = row.querySelector(`input[data-field="${field}"]`);
+                if (inputEl) {
+                    currentVal = parseInt(inputEl.value) || 0;
+                }
+            }
+
+            fetch('/api/inventory/history/create_initial', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    part: partName,
+                    item_id: itemId || 'N/A',
+                    model_name: modelName,
+                    field: field,
+                    new_value: currentVal,
+                    note: note
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // 重新載入明細歷史
+                    showCellHistory(itemId, field, modelName);
+                } else {
+                    alert('❌ 新增註記失敗：' + (data.error || '未知錯誤'));
+                }
+            })
+            .catch(err => alert('❌ 連線或新增註記失敗：' + err.message));
+        };
+
+        window.deleteHistoryRecord = function(button, itemId, field, modelName) {
+            if (!confirm('⚠️ 確定要徹底刪除此筆備註與異動紀錄嗎？此動作無法復原！')) {
+                return;
+            }
+            
+            const tr = button.closest('tr');
+            if (!tr) return;
+            
+            const part = decodeURIComponent(tr.getAttribute('data-part'));
+            const recordItemId = tr.getAttribute('data-item');
+            const timestamp = tr.getAttribute('data-time');
+            const recordField = tr.getAttribute('data-field');
+            
+            fetch('/api/inventory/history/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    part: part,
+                    item_id: recordItemId,
+                    timestamp: timestamp,
+                    field: recordField
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // 重新載入明細歷史
+                    showCellHistory(itemId, field, modelName);
+                } else {
+                    alert('❌ 刪除紀錄失敗：' + (data.error || '未知錯誤'));
+                }
+            })
+            .catch(err => alert('❌ 連線或刪除紀錄失敗：' + err.message));
+        };
 
         // --- 頁面初始化 ---
 
@@ -1996,8 +2142,8 @@
             const purchaseOrder = purchaseOrderElem ? purchaseOrderElem.value.trim() : '';
             const quantity = parseInt(document.getElementById('stockOutQuantity').value);
 
-            if (!model || !workOrder || !quantity) {
-                alert('請填寫所有必要欄位（機型、工單號碼、數量）！');
+            if (!model || !purchaseOrder || !quantity) {
+                alert('請填寫所有必要欄位（機型、採購編號、數量）！');
                 return;
             }
 

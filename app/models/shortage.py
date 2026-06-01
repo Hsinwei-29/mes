@@ -85,7 +85,7 @@ def get_workorder_picking_mapping(casting_inventory=None):
         # 先確保 PICKING_CACHE 已被填充（無論是否已初始化）
         get_picking_data()
         raw_df = PICKING_CACHE.get('raw_df')
-        if raw_df is None:
+        if raw_df is None or raw_df.empty:
             raw_df = pd.read_excel(picking_file, engine='calamine')
 
         # ── 3. 比對 ───────────────────────────────────────────────────

@@ -82,7 +82,7 @@ def create_app(config_name='default'):
     _t = threading.Thread(target=_warmup_cache, daemon=True, name="cache-warmup")
     _t.start()
 
-    # ── 背景定時更新快取 (每天 09:00 與 17:00) ──────────────────────
+    # ── 背景定時更新快取 (每天 12:00 與 17:00) ──────────────────────
     def _schedule_daily_updates():
         import time
         from datetime import datetime
@@ -90,9 +90,9 @@ def create_app(config_name='default'):
         while True:
             try:
                 now = datetime.now()
-                # 判斷是否在 09:00~09:05 或 17:00~17:05 之間觸發
+                # 判斷是否在 12:00~12:05 或 17:00~17:05 之間觸發
                 # (容錯 5 分鐘，避免剛好錯過 0 分)
-                if (now.hour == 9 or now.hour == 17) and now.minute < 5:
+                if (now.hour == 12 or now.hour == 17) and now.minute < 5:
                     run_tag = now.strftime('%Y%m%d_%H')
                     if last_run_tag != run_tag:
                         with app.app_context():

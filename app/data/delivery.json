@@ -1,0 +1,90 @@
+[
+  {
+    "partType": "底座",
+    "partNo": "8810001277A2",
+    "partDesc": "底座加工圖_7970x1730x558mm,HSA-423",
+    "expectedDate": "2026-05-28",
+    "replyDate": "2026-06-01",
+    "quantity": "1",
+    "remark": "100003640",
+    "createdAt": "2026/5/20",
+    "id": 1779262997296
+  },
+  {
+    "partType": "工作台",
+    "partNo": "8813001079A3",
+    "partDesc": "工作台加工圖_HSA-423,4000mmx2200mm",
+    "expectedDate": "2026-05-28",
+    "replyDate": "2026-05-28",
+    "quantity": "1",
+    "remark": "100003640",
+    "createdAt": "2026/5/20",
+    "id": 1779263027414
+  },
+  {
+    "partType": "橫樑",
+    "partNo": "8817000491D0",
+    "partDesc": "橫樑加工圖_3960x1000x1160,HSA-423",
+    "expectedDate": "2026-05-28",
+    "replyDate": "2026-05-28",
+    "quantity": "1",
+    "remark": "100003640",
+    "createdAt": "2026/5/20",
+    "id": 1779263057791
+  },
+  {
+    "partType": "底座",
+    "partNo": "8810001334A1",
+    "partDesc": "底座加工圖_10235L*2230W*558H,HSA-627",
+    "expectedDate": "2026-05-27",
+    "replyDate": "2026-05-28",
+    "quantity": "1",
+    "remark": "100003553",
+    "createdAt": "2026/5/27",
+    "id": 1779843573659
+  },
+  {
+    "partType": "工作台",
+    "partNo": "8813001132A3",
+    "partDesc": "工作台加工圖_6000L*2200W*260H,HSA-623/627",
+    "expectedDate": "2026-05-27",
+    "replyDate": "2026-05-28",
+    "quantity": "1",
+    "remark": "100003553",
+    "createdAt": "2026/5/27",
+    "id": 1779843700323
+  },
+  {
+    "partType": "底座",
+    "partNo": "8810001278A2",
+    "partDesc": "底座加工圖_7970x2230x558mm,HSA-427",
+    "expectedDate": "2026-05-27",
+    "replyDate": "",
+    "quantity": "1",
+    "remark": "100003649",
+    "createdAt": "2026/5/27",
+    "id": 1779846949974
+  },
+  {
+    "partType": "橫樑",
+    "partNo": "8817000518C1",
+    "partDesc": "橫樑加工圖_5130x1000x1160,HSA-x27EAY",
+    "expectedDate": "2026-05-27",
+    "replyDate": "",
+    "quantity": "1",
+    "remark": "100003649",
+    "createdAt": "2026/5/27",
+    "id": 1779846990366
+  },
+  {
+    "partType": "工作台",
+    "partNo": "8813001079A3",
+    "partDesc": "工作台加工圖_HSA-423,4000mmx2200mm",
+    "expectedDate": "2026-05-27",
+    "replyDate": "",
+    "quantity": "1",
+    "remark": "100003649",
+    "createdAt": "2026/5/27",
+    "id": 1779847032780
+  }
+]

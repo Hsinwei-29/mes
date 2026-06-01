@@ -159,7 +159,16 @@ def log_lifting_action(category, item_id, action, user_name):
         try:
             with open(history_file, 'r', encoding='utf-8') as f:
                 history = json.load(f)
-        except:
+        except Exception as e:
+            print(f"Warning: Error reading {history_file}: {e}")
+            import shutil
+            import time
+            backup_file = f"{history_file}.corrupted.{int(time.time())}"
+            try:
+                shutil.copy2(history_file, backup_file)
+                print(f"Backed up corrupted history to {backup_file}")
+            except:
+                pass
             history = []
             
     from .user import User

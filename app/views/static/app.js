@@ -37,7 +37,7 @@ const TRANSLATIONS = {
         DIFF: '差異',
         STATUS_SUFFICIENT: '充足',
         STATUS_WARNING: '不足',
-        STATUS_SHORTAGE: '嚴重短缺',
+        STATUS_SHORTAGE: '缺料',
         MODAL_TITLE_SUFFIX: '詳細製程追蹤',
         MODAL_LOADING: '正在讀取製程細節...',
         MODAL_NO_DATA: '無詳細製程資料',
@@ -458,15 +458,14 @@ function renderSupplyDemand(data) {
     });
 
     container.innerHTML = data.map(item => {
-        let statusKey = 'STATUS_WARNING';
+        let statusKey = 'STATUS_SUFFICIENT';
         if (item.差異 >= 0) {
-            statusKey = (item.差異 > 5 ? 'STATUS_SUFFICIENT' : 'STATUS_WARNING');
+            statusKey = 'STATUS_SUFFICIENT';
         } else {
             statusKey = 'STATUS_SHORTAGE';
         }
 
-        const statusClass = item.差異 >= 0 ?
-            (item.差異 > 5 ? 'sufficient' : 'warning') : 'shortage';
+        const statusClass = item.差異 >= 0 ? 'sufficient' : 'shortage';
 
         const badgeText = t(statusKey); // 使用翻譯後的狀態文字
 

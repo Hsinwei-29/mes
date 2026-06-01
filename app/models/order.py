@@ -74,48 +74,81 @@ def get_picking_data():
 
         print(f"Fetching Picking Data from API: {api_url}")
 
-        
-        with urllib.request.urlopen(api_url, timeout=30) as response:
-            json_data = json.loads(response.read().decode('utf-8'))
-            
-        # 將 JSON 扁平化，轉換為類似 Excel 的 DataFrame 結構
         rows = []
-        for mat_item in json_data:
-            part_id = str(mat_item.get('物料', '')).strip()
-            part_desc_top = str(mat_item.get('物料說明', '')).strip()
-            un_stock = mat_item.get('unrestricted_stock', 0.0)
-            ins_stock = mat_item.get('inspection_stock', 0.0)
-            
-            for detail in mat_item.get('demand_details', []):
-                order_id = str(detail.get('訂單', '')).strip()
-                if not order_id: continue
+        try:
+            # 1. 讀取成品物料清單
+            with urllib.request.urlopen(api_url, timeout=3.0) as response:
+                materials_data = json.loads(response.read().decode('utf-8'))
                 
-                # 需求與領料 (API 若無提供需求數量，針對已領足項目(pending=0)預設為 1.0 確保顯示)
-                pending = float(detail.get('未結數量 (EINHEIT)', 0.0) or 0.0)
-                api_demand = detail.get('需求數量 (EINHEIT)')
+            # 2. 讀取所有需求明細
+            api_details_url = current_app.config.get('PICKING_DETAILS_API_URL', 'http://192.168.6.119:5002/api/demand_details/all')
+            try:
+                with urllib.request.urlopen(api_details_url, timeout=3.0) as response:
+                    details_data = json.loads(response.read().decode('utf-8'))
+            except Exception as ed:
+                print(f"Failed to fetch demand details from {api_details_url}: {ed}. Using empty dict for details.")
+                details_data = {}
                 
-                if api_demand is not None:
-                    demand = float(api_demand)
-                else:
-                    # 若 API 沒給需求量，且未結為 0，暗示已領，設為 1.0 供系統判定
-                    demand = pending if pending > 0 else 1.0
+            # 將 JSON 扁平化，轉換為類似 Excel 的 DataFrame 結構
+            for mat_item in materials_data:
+                part_id = str(mat_item.get('物料', '')).strip()
+                part_desc_top = str(mat_item.get('物料說明', '')).strip()
+                un_stock = mat_item.get('unrestricted_stock', 0.0)
+                ins_stock = mat_item.get('inspection_stock', 0.0)
                 
-                picked = demand - pending
+                # 如果 mat_item 中的 demand_details 為空，則從全域 details_data 中補充
+                details = mat_item.get('demand_details', [])
+                if not details or len(details) == 0:
+                    details = details_data.get(part_id, [])
+                
+                for detail in details:
+                    order_id = str(detail.get('訂單', '')).strip()
+                    if not order_id: continue
+                    
+                    # 需求與領料 (API 若無提供需求數量，針對已領足項目(pending=0)預設為 1.0 確保顯示)
+                    pending = float(detail.get('未結數量 (EINHEIT)', 0.0) or 0.0)
+                    api_demand = detail.get('需求數量 (EINHEIT)')
+                    
+                    if api_demand is not None:
+                        demand = float(api_demand)
+                    else:
+                        # 若 API 沒給需求量，且未結為 0，暗示已領，設為 1.0 供系統判定
+                        demand = pending if pending > 0 else 1.0
+                    
+                    picked = demand - pending
 
-                
-                rows.append({
-                    '訂單': order_id,
-                    '物料': part_id,
-                    '需求數量 (EINHEIT)': demand,
-                    '領料數量 (EINHEIT)': picked,
-                    '未結數量 (EINHEIT)': pending,
-                    '物料說明': detail.get('物料說明', part_desc_top),
-                    '需求日期': detail.get('需求日期', ''),
-                    'unrestricted_stock': un_stock,
-                    'inspection_stock': ins_stock
-                })
-        
-        raw_df = pd.DataFrame(rows)
+                    rows.append({
+                        '訂單': order_id,
+                        '物料': part_id,
+                        '需求數量 (EINHEIT)': demand,
+                        '領料數量 (EINHEIT)': picked,
+                        '未結數量 (EINHEIT)': pending,
+                        '物料說明': detail.get('物料說明', part_desc_top),
+                        '需求日期': detail.get('需求日期', ''),
+                        'unrestricted_stock': un_stock,
+                        'inspection_stock': ins_stock
+                    })
+        except Exception as e:
+            print(f"API request failed: {e}. Will fall back to local Excel file.")
+            rows = []
+
+        if not rows:
+            print("API returned empty picking data or request failed. Falling back to local Excel file...")
+            picking_file = current_app.config['PICKING_FILE']
+            if os.path.exists(picking_file):
+                raw_df = pd.read_excel(picking_file, engine='calamine')
+                # 確保列存在
+                for col in ['unrestricted_stock', 'inspection_stock']:
+                    if col not in raw_df.columns:
+                        raw_df[col] = 0.0
+            else:
+                raw_df = pd.DataFrame(columns=[
+                    '訂單', '物料', '需求數量 (EINHEIT)', '領料數量 (EINHEIT)', 
+                    '未結數量 (EINHEIT)', '物料說明', '需求日期', 
+                    'unrestricted_stock', 'inspection_stock'
+                ])
+        else:
+            raw_df = pd.DataFrame(rows)
         
         # 建立 picking_map (用於 order.py 其他邏輯)
         picking_map = {}
@@ -163,7 +196,7 @@ def get_picking_data():
         return picking_map
 
     except Exception as e:
-        print(f"Error fetching picking data from API: {e}")
+        print(f"Error in get_picking_data wrapper: {e}")
         import traceback
         traceback.print_exc()
         return PICKING_CACHE['data'] or {}

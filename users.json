@@ -3,7 +3,7 @@
     {
       "id": "1",
       "username": "hsinwei",
-      "password_hash": "scrypt:32768:8:1$cPA2SQX2BUj3WQSq$b8ad05fcdb484b80824692ae628bf169d1bf989d515373643389d0be296c7325396c265ee420e72d9276597398dcfa99545ad2bc6662b637071d8c4141619cfe",
+      "password_hash": "pbkdf2:sha256:260000$NTUav3OjGpC372Ko$fc3c2fcf4951ef46c836d3728f0aa252ec40f414afefad8a0c5e3868150ab61b",
       "role": "admin",
       "created_at": "2026-01-26T23:20:39.244273",
       "chinese_name": "張新偉"
@@ -22,15 +22,15 @@
       "password_hash": "scrypt:32768:8:1$23A0EKFFW7LEoo7L$788f8918fe2d59a5e747c829060ba2c3e37abd6c25086e9916b55aa0cadd8c8c16eaf1fe50139146f3d85a60fea067fd2e24f935cbb8a9eb9e4ef80a53f5f940",
       "role": "admin",
       "created_at": "2026-02-26T15:51:20.512740",
-      "chinese_name": ""
+      "chinese_name": "陳泊睿"
     },
     {
       "id": "5",
       "username": "wangwq",
-      "password_hash": "scrypt:32768:8:1$JGhxQ034tJ5ImkYZ$253a5df66e9ee7a2df336fff7c3d3a9d77bb2040bd2e4a90a5b1771782c00787a33f0148c53b7b1e00858efe7c2f033143a67aba1d6a3b4b6ff68e4d4b0debfb",
+      "password_hash": "pbkdf2:sha256:260000$DbLHrApG0RpJibcj$7fe08b0489db30d35c7607e3ae43fffb9ac792d9453172c88d039973ddbc5996",
       "role": "admin",
       "created_at": "2026-02-26T17:03:29.638764",
-      "chinese_name": ""
+      "chinese_name": "王尉全"
     },
     {
       "id": "6",
@@ -38,12 +38,12 @@
       "password_hash": "scrypt:32768:8:1$X7oKqtebffob7Ca8$da28fe8d2faab40e1ecb2f31a1db08a816a672d31094df4268ae6aef9449ee2e049b4ea43fb1058734b6940cd5ab52467907c0c4bb29f885f82fc323be1a4375",
       "role": "admin",
       "created_at": "2026-03-12T15:30:35.286541",
-      "chinese_name": ""
+      "chinese_name": "鍾誠華"
     },
     {
       "id": "7",
       "username": "000915",
-      "password_hash": "scrypt:32768:8:1$Rb6KoYs62zd29hax$967ab4f48ba9bf4a90c7a29b7af0025aea18cb223ec0f4ad61d37b9c50a3fd15f930fa16a49c71a1d6e48f3ce6ff11223efd416ae3fa285e4aaf5e04480602c5",
+      "password_hash": "pbkdf2:sha256:260000$IfCkXEbFEo43x92c$3c8262c0f04c4c5e973afba781ede442966b63a00a6268197515da848293364f",
       "role": "user",
       "created_at": "2026-03-31T08:52:49.846266",
       "chinese_name": "吳孟哲"
@@ -51,7 +51,7 @@
     {
       "id": "8",
       "username": "001555",
-      "password_hash": "scrypt:32768:8:1$OA9IOCZrlnAJR3ED$aca47944904f4c3193edd38d2b31b652d4e479f40cce407783d740851214a3055c00a11dfc3f4e913117c3899c426acb8a66ffcf8e934931b1d57a36a05aeaf4",
+      "password_hash": "pbkdf2:sha256:260000$deEa59Ol12hdGXa6$3c03288d6ef2391e2bda06befe79c49553112b4f467bcfecfd67ae1bd5e62f71",
       "role": "user",
       "created_at": "2026-04-13T09:30:07.350558",
       "chinese_name": "諾瑞兒"
@@ -59,7 +59,7 @@
     {
       "id": "9",
       "username": "001257",
-      "password_hash": "scrypt:32768:8:1$QzRAgENtzHrosOhv$bd52d829d4c407c40b8a0a7e60d6925f84e85756aa5cf850b1ac7a63f00760f788a57b017f8da36c279364647ab0acf598998057c5939596d60c2442ad223af2",
+      "password_hash": "pbkdf2:sha256:260000$8ZrUIvYacs7QDhtW$7ecde6dc6f8d252375266711696dee212c08c707b7dd6a811351d85a47b01aec",
       "role": "user",
       "created_at": "2026-04-15T08:45:44.309186",
       "chinese_name": "艾羅瑞"
@@ -67,7 +67,7 @@
     {
       "id": "10",
       "username": "001261",
-      "password_hash": "scrypt:32768:8:1$osADOwdrxCMw0H5R$0bbdbd0118a4987937c3f410272ae0af2a9b0a98f87c047b7f93e681d2d77984d46104d9f4c76fe1f13a898b3d0b80f60971b594967fd1cf8fbf6c03dfb5f34b",
+      "password_hash": "pbkdf2:sha256:260000$wVXsCpfBBP9lHq59$0b10f520313ccf9e1259ec1ba931cb48bdc31d45574fde7fec3b6df417e5e1e5",
       "role": "user",
       "created_at": "2026-04-15T08:46:23.115673",
       "chinese_name": "喬賽多"
@@ -75,7 +75,7 @@
     {
       "id": "11",
       "username": "001575",
-      "password_hash": "scrypt:32768:8:1$DpobrQnmqZ658HsD$cb72fbefb51df717ae95b25c8a9735dc35f9dbd810374de4a1301b52a07c014675902a4671351b7cf6325f1ff06f6307ad4ea18a1dc15db98b60977276342388",
+      "password_hash": "pbkdf2:sha256:260000$KeJqiR1LrKw5Odi2$f1d0d68d6da6823c393df5cfc0ed22ce3d5210478f906f9f472470c3f01d8a98",
       "role": "user",
       "created_at": "2026-04-15T08:46:35.688895",
       "chinese_name": "傑若米"
@@ -83,10 +83,50 @@
     {
       "id": "12",
       "username": "ming888",
-      "password_hash": "scrypt:32768:8:1$FTcS5oLsLTpfDw7K$0e3aa8ef0d3fafeb0f0503f445da2c061f6291cd8a6e64fe5cf519de0c7ff2e2f2ed8b58fa86523444179576d253c7410468105d9b99dad1ab1b76eb990bfb8c",
-      "role": "user",
+      "password_hash": "pbkdf2:sha256:260000$JeTffNAX6eFtMDe1$1db9e2992ccca7d08bc9fb12d91a60183b4de2fcb5e4c23a21da87e641d2ce09",
+      "role": "admin",
       "created_at": "2026-04-15T08:47:28.815995",
       "chinese_name": "趙銘傑"
+    },
+    {
+      "id": "13",
+      "username": "ralf",
+      "password_hash": "pbkdf2:sha256:260000$xm8xr6uvbeePFldR$c3f8ad1074f5241434635d8e85518da225f6bfbe13d4d301931d652ee38642cb",
+      "role": "admin",
+      "created_at": "2026-05-08T11:22:30.307136",
+      "chinese_name": "梁栢章"
+    },
+    {
+      "id": "14",
+      "username": "samwang",
+      "password_hash": "scrypt:32768:8:1$DOj4nGRAQ42mt1sY$8e3c46147beba679d964008ada9fca2b81d872200dd69f48bb63a0954f044adf2bf54f457846dcbff445aca1e35a4e60ff5b7d77dd1f8abaa555a7a7a1d2207b",
+      "role": "admin",
+      "created_at": "2026-05-08T15:48:54.000836",
+      "chinese_name": "王文山"
+    },
+    {
+      "id": "15",
+      "username": "tcccms",
+      "password_hash": "scrypt:32768:8:1$J9UEVNnB1kXkT8YB$63c718c3b96ee27e143677630dbc207a57420cd0ccbff9bb0f6286b509a2f667cc65e5766a7329f4c22774f96e89f68b63e418dbd6658b64973594d8b81147cc",
+      "role": "admin",
+      "created_at": "2026-05-11T07:42:43.870418",
+      "chinese_name": "蔡珺丞"
+    },
+    {
+      "id": "16",
+      "username": "webb",
+      "password_hash": "scrypt:32768:8:1$G0OFvNG0H7BcSUzY$ce9b0e2f368658058a5ee1e9fc7776369d7936cf12490fa6f8768a6f0aec05b11650f7a7e10d17aa0944f6e88530a9559b00ea8553e2391ad8f460c973e724b5",
+      "role": "admin",
+      "created_at": "2026-05-12T14:41:14.057818",
+      "chinese_name": "陳錫賢"
+    },
+    {
+      "id": "17",
+      "username": "ralf_view",
+      "password_hash": "scrypt:32768:8:1$4ibfgGupnT9XvdUR$474c4e973e9074606244c45227a238d7d45473db0dcfac81e82a693bf381052a63e773f5a5178e619d84491e156bfdbce918843c6c07e30c353dc7972caa5c0f",
+      "role": "user",
+      "created_at": "2026-05-14T18:25:48.795559",
+      "chinese_name": ""
     }
   ]
 }

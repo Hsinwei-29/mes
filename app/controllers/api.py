@@ -4,6 +4,10 @@ from datetime import datetime
 from ..models.inventory import load_casting_inventory, get_part_details, update_cell, get_edit_history, get_zero_inventory_models
 from ..models.order import load_orders
 from ..models.lifting import load_lifting_inventory, update_lifting_status
+from ..models.material_request import (
+    get_delivery_records, add_delivery_record, update_delivery_record, delete_delivery_record,
+    get_shipping_records, add_shipping_request, delete_shipping_record, update_shipping_signature
+)
 from .. import socketio
 
 api_bp = Blueprint('api', __name__)
@@ -46,11 +50,11 @@ def calculate_supply_demand():
         diff = stock - need
         
         # 判斷邏輯：
-        # - 如果該大類有任何機型「完全沒素材」且缺料，顯示「不足」
-        # - 如果該大類缺料的機型還有素材 (可接續加工)，雖缺料不題示「不足」
+        # - 如果該大類有任何機型「完全沒素材」且缺料，顯示「缺料」
+        # - 如果該大類缺料的機型還有素材 (可接續加工)，雖缺料不提示「不足」
         if hard_shortage.get(part, False):
-            # 設為 1 確保前端判定為 'STATUS_WARNING' (不足)
-            diff = 1
+            # 設為 -1 確保前端判定為 'STATUS_SHORTAGE' (缺料)
+            diff = -1
         
         analysis.append({
             '鑄件': part, 
@@ -161,6 +165,39 @@ def api_finished_orders_requirements():
         import traceback
         traceback.print_exc()
         return jsonify({'error': '一個內部伺服器錯誤發生了'}), 500
+
+@api_bp.route('/orders/casting-map', methods=['GET'])
+@login_required
+def api_orders_casting_map():
+    """回傳工單號碼 → 各鑄件零件品號對應表，供出貨單挑選器使用"""
+    if not current_user.is_admin():
+        return jsonify({'error': '權限不足'}), 403
+    try:
+        from ..models.shortage import calculate_shortage
+        shortage_list = calculate_shortage()
+
+        # 建立 {工單號碼: {零件類型: [{品號, 物料說明, 機型}]}}
+        wo_map = {}
+        for item in shortage_list:
+            wo = str(item.get('工單號碼', '')).strip()
+            pt = str(item.get('零件類型', '')).strip()
+            pn = str(item.get('品號', '')).strip()
+            desc = str(item.get('物料說明', '')).strip().replace('\n', '')
+            model = str(item.get('機型', '')).strip()
+            if wo and pt and pn:
+                if wo not in wo_map:
+                    wo_map[wo] = {}
+                if pt not in wo_map[wo]:
+                    wo_map[wo][pt] = []
+                # 避免重複的品號
+                if not any(x['品號'] == pn for x in wo_map[wo][pt]):
+                    wo_map[wo][pt].append({'品號': pn, '物料說明': desc, '機型': model})
+
+        return jsonify({'success': True, 'data': wo_map})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 
 @api_bp.route('/summary')
@@ -440,6 +477,57 @@ def api_update_history_note():
     else:
         return jsonify({'success': False, 'error': '更新失敗，找不到紀錄'}), 404
 
+
+@api_bp.route('/inventory/history/create_initial', methods=['POST'])
+@login_required
+def api_create_initial_history():
+    """建立初始備註歷程紀錄 (限登入者)"""
+    data = request.get_json()
+    part = data.get('part')
+    item_id = data.get('item_id')
+    model_name = data.get('model_name')
+    field = data.get('field')
+    new_value = data.get('new_value', 0)
+    note = data.get('note')
+    
+    if not all([part, item_id, field]):
+        return jsonify({'success': False, 'error': '缺少必要參數'}), 400
+        
+    from ..models.inventory import log_edit
+    log_edit(
+        part_type=part,
+        item_id=item_id,
+        field=field,
+        old_value=0,
+        new_value=new_value,
+        user_id=current_user.username,
+        note=note,
+        model_name=model_name
+    )
+    return jsonify({'success': True})
+
+
+@api_bp.route('/inventory/history/delete', methods=['POST'])
+@login_required
+def api_delete_history():
+    """刪除歷史異動紀錄 (限登入者)"""
+    data = request.get_json()
+    part = data.get('part')
+    item_id = data.get('item_id')
+    timestamp = data.get('timestamp')
+    field = data.get('field')
+    
+    if not all([part, item_id, timestamp, field]):
+        return jsonify({'success': False, 'error': '缺少必要參數'}), 400
+        
+    from ..models.inventory import delete_history_record
+    success = delete_history_record(part, item_id, timestamp, field)
+    
+    if success:
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False, 'error': '刪除失敗，找不到紀錄'}), 404
+
 @api_bp.route('/inventory/history/stats/<part_type>')
 def api_history_stats(part_type):
     """取得歷程統計資訊"""
@@ -626,7 +714,7 @@ def stock_out():
         model = data.get('model')
         purchase_order = data.get('purchase_order')
         
-        if not part_name or not work_order or not quantity:
+        if not part_name or not quantity:
             return jsonify({'success': False, 'error': '缺少必要參數'}), 400
         
         # 調用 inventory.py 中的出庫函數
@@ -802,3 +890,72 @@ def api_lifting_history():
         'top_5': top_5,
         'query_month': month
     })
+
+# --- Material Request Endpoints ---
+@api_bp.route('/material-request/delivery', methods=['GET'])
+@login_required
+def api_get_delivery():
+    return jsonify({
+        'success': True,
+        'data': get_delivery_records()
+    })
+
+@api_bp.route('/material-request/delivery', methods=['POST'])
+@login_required
+def api_add_delivery():
+    record = request.json
+    new_record = add_delivery_record(record)
+    return jsonify({
+        'success': True,
+        'data': new_record
+    })
+
+@api_bp.route('/material-request/delivery/<int:record_id>', methods=['DELETE'])
+@login_required
+def api_delete_delivery(record_id):
+    success = delete_delivery_record(record_id)
+    return jsonify({'success': success})
+
+@api_bp.route('/material-request/delivery/<int:record_id>/update', methods=['POST'])
+@login_required
+def api_update_delivery(record_id):
+    req = request.json
+    field = req.get('field')
+    value = req.get('value')
+    success = update_delivery_record(record_id, field, value)
+    return jsonify({'success': success})
+
+@api_bp.route('/material-request/shipping', methods=['GET'])
+@login_required
+def api_get_shipping():
+    return jsonify({
+        'success': True,
+        'data': get_shipping_records()
+    })
+
+@api_bp.route('/material-request/shipping', methods=['POST'])
+@login_required
+def api_add_shipping():
+    record = request.json
+    new_record = add_shipping_request(record)
+    return jsonify({
+        'success': True,
+        'data': new_record
+    })
+
+@api_bp.route('/material-request/shipping/<int:record_id>', methods=['DELETE'])
+@login_required
+def api_delete_shipping(record_id):
+    success = delete_shipping_record(record_id)
+    return jsonify({'success': success})
+
+@api_bp.route('/material-request/shipping/sign', methods=['POST'])
+@login_required
+def api_sign_shipping():
+    req = request.json
+    record_id = req.get('id')
+    role = req.get('role')
+    name = req.get('name')
+    img_data = req.get('img')
+    success = update_shipping_signature(record_id, role, name, img_data)
+    return jsonify({'success': success})

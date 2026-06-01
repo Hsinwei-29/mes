@@ -10,6 +10,7 @@ class Config:
     WORKORDER_FILE = os.path.join(DATA_DIR, '工單總表2026.xls')
     PICKING_FILE = os.path.join(DATA_DIR, '成品撥料.XLSX')
     PICKING_API_URL = "http://192.168.6.119:5002/api/finished_materials"
+    PICKING_DETAILS_API_URL = "http://192.168.6.119:5002/api/demand_details/all"
 
     
     # 應用程式設定

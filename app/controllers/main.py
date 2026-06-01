@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash, make_response
 from flask_login import current_user, login_required
 from datetime import datetime
 
@@ -13,6 +13,7 @@ PART_ICONS = {
 }
 
 @main_bp.route('/')
+@login_required
 def index():
     """主頁面 - 庫存看板"""
     return render_template('main/index.html')
@@ -52,7 +53,6 @@ def casting_page(part_type):
                           rows=rows,
                           is_logged_in=is_logged_in,
                           is_admin=is_admin,
-                          current_user=username,
                           timestamp=timestamp)
 
 @main_bp.route('/shortage')
@@ -121,7 +121,6 @@ def part_detail_page(part_type):
                           total_semi=total_semi,
                           total_finished=total_finished,
                           total_demand=total_demand,
-                          current_user=username,
                           timestamp=timestamp)
 
 @main_bp.route('/model-search')
@@ -136,7 +135,13 @@ def material_request_page():
     if not current_user.is_admin():
         flash('權限不足：只有管理員可以訪問物料申請頁面', 'error')
         return redirect(url_for('main.index'))
-    return render_template('main/material_request.html')
+    
+    import time
+    response = make_response(render_template('main/material_request.html', cache_version=int(time.time())))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @main_bp.route('/lifting')
 def lifting_page():

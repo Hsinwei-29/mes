@@ -342,6 +342,38 @@ def update_history_note(part, item_id, timestamp, field, new_note):
         print(f"Error updating history note: {e}")
         return False
 
+
+def delete_history_record(part, item_id, timestamp, field):
+    """從歷史紀錄中刪除特定紀錄"""
+    try:
+        log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs', 'edit_history.json')
+        
+        if not os.path.exists(log_file):
+            return False
+        
+        with open(log_file, 'r', encoding='utf-8') as f:
+            history = json.load(f)
+        
+        # 尋找並過濾掉要刪除的紀錄
+        original_len = len(history)
+        history = [h for h in history if not (
+            h.get('part') == part and 
+            str(h.get('item_id')) == str(item_id) and 
+            h.get('timestamp') == timestamp and 
+            h.get('field') == field
+        )]
+        
+        if len(history) < original_len:
+            with open(log_file, 'w', encoding='utf-8') as f:
+                json.dump(history, f, ensure_ascii=False, indent=2)
+            return True
+            
+        return False
+    
+    except Exception as e:
+        print(f"Error deleting history record: {e}")
+        return False
+
 def get_zero_inventory_models():
     """獲取總數為0的機型列表（庫存警示）"""
     try:
@@ -380,12 +412,20 @@ CONFIGS = {
 
 SHEET_MAP = {'底座': 1, '工作台': 2, '橫樑': 3, '立柱': 4, '定樑': 7}
 
+_PART_DETAILS_CACHE = {}
+
 def get_part_details(part_type):
     """載入特定鑄件的詳細製程資料 (顯示所有原始機型名稱)"""
     try:
         casting_file = current_app.config['CASTING_FILE']
         sheet_idx = SHEET_MAP.get(part_type)
         if sheet_idx is None: return {"headers": [], "rows": []}
+
+        mtime = os.path.getmtime(casting_file)
+        if part_type in _PART_DETAILS_CACHE:
+            cached = _PART_DETAILS_CACHE[part_type]
+            if cached['mtime'] == mtime:
+                return cached['data']
 
         config = CONFIGS.get(part_type, [])
         headers = ['品號', '機型'] + [c[0] for c in config]
@@ -425,7 +465,9 @@ def get_part_details(part_type):
                 data_row[label] = to_int(row.iloc[idx])
             rows.append(data_row)
             
-        return {"headers": headers, "rows": rows}
+        result = {"headers": headers, "rows": rows}
+        _PART_DETAILS_CACHE[part_type] = {'mtime': mtime, 'data': result}
+        return result
     except Exception as e:
         print(f"Error loading {part_type} details: {e}")
         import traceback
@@ -546,7 +588,13 @@ def log_edit(part_type, item_id, field, old_value, new_value, user_id, note=None
         
         from .user import User
         name_map = User.get_name_map()
-        user_display = name_map.get(user_id, user_id)
+        user_display = name_map.get(user_id)
+        if not user_display:
+            u = User.get_by_id(user_id)
+            if u:
+                user_display = u.chinese_name or u.username
+            else:
+                user_display = user_id
 
         entry = {
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),

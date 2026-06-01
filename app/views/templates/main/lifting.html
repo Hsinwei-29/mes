@@ -7,7 +7,7 @@
     <title>吊具管理 - 協鴻工業</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" onerror="this.media='all'">
     <style>
         .tabs {
             display: flex;
@@ -81,6 +81,19 @@
         .status-out {
             background-color: rgba(245, 158, 11, 0.2);
             color: #d97706;
+        }
+
+        .status-overdue {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
         }
 
         .scan-container {
@@ -365,8 +378,24 @@
 
             tbody.innerHTML = items.map(item => {
                 const isBorrowed = item.status === '借用中' || item.borrower !== '';
-                const statusClass = isBorrowed ? 'status-out' : 'status-in';
                 const statusText = isBorrowed ? '借用中' : '在庫';
+
+                // 檢查是否超過 24 小時
+                let isOverdue = false;
+                if (isBorrowed && item.borrow_date && item.borrow_date !== '') {
+                    try {
+                        const borrowDate = new Date(item.borrow_date.replace(/-/g, '/'));
+                        const now = new Date();
+                        const diffHours = (now - borrowDate) / (1000 * 60 * 60);
+                        if (diffHours >= 24) {
+                            isOverdue = true;
+                        }
+                    } catch (e) {
+                        console.error('日期解析失敗:', item.borrow_date);
+                    }
+                }
+
+                const statusClass = isBorrowed ? (isOverdue ? 'status-overdue' : 'status-out') : 'status-in';
 
                 let actionBtn = '';
                 if (isBorrowed) {
