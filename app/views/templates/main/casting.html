@@ -176,6 +176,10 @@
             position: relative;
         }
 
+        .row-ready-green td {
+            background-color: #dcfce7 !important;
+        }
+
         .total-col {
             position: relative;
         }
@@ -845,7 +849,11 @@
                 </thead>
                 <tbody id="editTableBody">
                     {% for row in rows %}
-                    <tr data-item-id="{{ row['品號'] }}" data-model-name="{{ row['機型'] }}" data-changed="false">
+                    {% set raw_qty = (row.get('素材', 0) or 0) | int %}
+                    {% set fin_header = headers[-2] if headers|length > 2 else '' %}
+                    {% set fin_qty = (row.get(fin_header, 0) or 0) | int %}
+                    {% set ready_class = 'row-ready-green' if raw_qty > 0 and fin_qty == 0 else '' %}
+                    <tr data-item-id="{{ row['品號'] }}" data-model-name="{{ row['機型'] }}" data-changed="false" class="{{ ready_class }}">
                         {% for header in headers %}
                         {% if header == '品號' %}
                         <td>{{ row[header] }}</td>
@@ -1678,12 +1686,13 @@
                 tableBody.addEventListener('input', function (e) {
                     if (e.target.classList.contains('edit-input')) {
                         const row = e.target.closest('tr');
-                        updateRowTotal(row);
                         
-                        // 標記為已修改
+                        // 標記為已修改 (必須在 updateRowTotal 前設定，讓其可以覆蓋原本的底色)
                         row.dataset.changed = "true";
                         row.style.borderLeft = "4px solid var(--accent-green)";
                         row.style.background = "rgba(16, 185, 129, 0.05)";
+                        
+                        updateRowTotal(row);
                     }
                 });
 
@@ -1711,6 +1720,20 @@
             });
 
             totalCell.textContent = total;
+            
+            // 檢查：有素材但沒有成品，給予綠底顯示
+            if (inputs.length >= 2) {
+                const rawQty = parseInt(inputs[0].value) || 0;
+                const finQty = parseInt(inputs[inputs.length - 1].value) || 0;
+                
+                if (row.dataset.changed !== "true") {
+                    if (rawQty > 0 && finQty === 0) {
+                        row.classList.add('row-ready-green');
+                    } else {
+                        row.classList.remove('row-ready-green');
+                    }
+                }
+            }
         }
 
         /**

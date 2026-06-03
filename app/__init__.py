@@ -18,6 +18,7 @@ def create_app(config_name='default'):
     app.config.from_object(config[config_name])
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
     app.config['CASTING_FILE'] = '鑄件盤點資料.xlsx'
+    app.config['TEMPLATES_AUTO_RELOAD'] = True
     
     # Session 配置 - 使用 Cookie-based sessions
     app.config['SESSION_COOKIE_SECURE'] = False  # 開發環境設為 False，生產環境應設為 True
