@@ -1,5 +1,404 @@
 [
   {
+    "timestamp": "2026-06-05 08:07:52",
+    "category": "吊具",
+    "item_id": "F006106",
+    "action": "領用",
+    "user": "傑若米"
+  },
+  {
+    "timestamp": "2026-06-05 08:07:47",
+    "category": "吊具",
+    "item_id": "F006105",
+    "action": "領用",
+    "user": "傑若米"
+  },
+  {
+    "timestamp": "2026-06-05 08:07:44",
+    "category": "吊具",
+    "item_id": "F006104",
+    "action": "領用",
+    "user": "傑若米"
+  },
+  {
+    "timestamp": "2026-06-05 08:07:37",
+    "category": "吊具",
+    "item_id": "F006103",
+    "action": "領用",
+    "user": "傑若米"
+  },
+  {
+    "timestamp": "2026-06-04 16:04:37",
+    "category": "吊具",
+    "item_id": "F006106",
+    "action": "歸還",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-04 16:04:35",
+    "category": "吊具",
+    "item_id": "F006105",
+    "action": "歸還",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-04 16:04:33",
+    "category": "吊具",
+    "item_id": "F006104",
+    "action": "歸還",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-04 16:04:30",
+    "category": "吊具",
+    "item_id": "F006103",
+    "action": "歸還",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-04 13:59:33",
+    "category": "吊具",
+    "item_id": "F006003",
+    "action": "歸還",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-04 13:59:30",
+    "category": "吊具",
+    "item_id": "F006004",
+    "action": "歸還",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-04 13:07:45",
+    "category": "吊具",
+    "item_id": "F006004",
+    "action": "領用",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-04 13:07:42",
+    "category": "吊具",
+    "item_id": "F006003",
+    "action": "領用",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-04 08:18:09",
+    "category": "吊具",
+    "item_id": "F006106",
+    "action": "領用",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-04 08:18:05",
+    "category": "吊具",
+    "item_id": "F006105",
+    "action": "領用",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-04 08:17:58",
+    "category": "吊具",
+    "item_id": "F006104",
+    "action": "領用",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-04 08:17:51",
+    "category": "吊具",
+    "item_id": "F006103",
+    "action": "領用",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-03 16:46:18",
+    "category": "吊具",
+    "item_id": "F006106",
+    "action": "歸還",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-03 16:46:12",
+    "category": "吊具",
+    "item_id": "F006105",
+    "action": "歸還",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-03 16:46:10",
+    "category": "吊具",
+    "item_id": "F006104",
+    "action": "歸還",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-03 16:46:08",
+    "category": "吊具",
+    "item_id": "F006103",
+    "action": "歸還",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-03 14:51:04",
+    "category": "吊具",
+    "item_id": "F006006",
+    "action": "歸還",
+    "user": "諾瑞兒"
+  },
+  {
+    "timestamp": "2026-06-03 13:13:45",
+    "category": "吊具",
+    "item_id": "F006004",
+    "action": "歸還",
+    "user": "諾瑞兒"
+  },
+  {
+    "timestamp": "2026-06-03 13:13:39",
+    "category": "吊具",
+    "item_id": "F006003",
+    "action": "歸還",
+    "user": "諾瑞兒"
+  },
+  {
+    "timestamp": "2026-06-03 13:09:29",
+    "category": "吊具",
+    "item_id": "F006006",
+    "action": "領用",
+    "user": "諾瑞兒"
+  },
+  {
+    "timestamp": "2026-06-03 11:14:18",
+    "category": "吊具",
+    "item_id": "F006004",
+    "action": "領用",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-03 11:14:14",
+    "category": "吊具",
+    "item_id": "F006003",
+    "action": "領用",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-03 11:13:43",
+    "category": "吊具",
+    "item_id": "F006005",
+    "action": "歸還",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-03 11:13:40",
+    "category": "吊具",
+    "item_id": "F006004",
+    "action": "歸還",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-03 11:13:35",
+    "category": "吊具",
+    "item_id": "F006003",
+    "action": "歸還",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-03 11:12:32",
+    "category": "吊具",
+    "item_id": "F006003",
+    "action": "領用",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-03 10:46:59",
+    "category": "吊具",
+    "item_id": "F006004",
+    "action": "領用",
+    "user": "趙銘傑"
+  },
+  {
+    "timestamp": "2026-06-03 10:46:19",
+    "category": "吊具",
+    "item_id": "F006005",
+    "action": "領用",
+    "user": "趙銘傑"
+  },
+  {
+    "timestamp": "2026-06-03 10:45:37",
+    "category": "吊具",
+    "item_id": "F006003",
+    "action": "領用",
+    "user": "趙銘傑"
+  },
+  {
+    "timestamp": "2026-06-03 08:12:23",
+    "category": "吊具",
+    "item_id": "F006106",
+    "action": "領用",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-03 08:12:16",
+    "category": "吊具",
+    "item_id": "F006105",
+    "action": "領用",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-03 08:12:11",
+    "category": "吊具",
+    "item_id": "F006104",
+    "action": "領用",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-03 08:12:02",
+    "category": "吊具",
+    "item_id": "F006103",
+    "action": "領用",
+    "user": "艾羅瑞"
+  },
+  {
+    "timestamp": "2026-06-02 16:03:04",
+    "category": "吊具",
+    "item_id": "F006005",
+    "action": "歸還",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-02 16:03:01",
+    "category": "吊具",
+    "item_id": "F006004",
+    "action": "歸還",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-02 16:02:58",
+    "category": "吊具",
+    "item_id": "F006003",
+    "action": "歸還",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-02 16:02:49",
+    "category": "吊具",
+    "item_id": "F006106",
+    "action": "歸還",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-02 16:02:46",
+    "category": "吊具",
+    "item_id": "F006105",
+    "action": "歸還",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-02 16:02:43",
+    "category": "吊具",
+    "item_id": "F006104",
+    "action": "歸還",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-02 16:02:40",
+    "category": "吊具",
+    "item_id": "F006103",
+    "action": "歸還",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-02 13:15:09",
+    "category": "吊具",
+    "item_id": "F006005",
+    "action": "領用",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-02 13:15:06",
+    "category": "吊具",
+    "item_id": "F006004",
+    "action": "領用",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-02 13:15:02",
+    "category": "吊具",
+    "item_id": "F006003",
+    "action": "領用",
+    "user": "吳孟哲"
+  },
+  {
+    "timestamp": "2026-06-02 09:29:57",
+    "category": "吊具",
+    "item_id": "F006006",
+    "action": "歸還",
+    "user": "諾瑞兒"
+  },
+  {
+    "timestamp": "2026-06-02 09:04:01",
+    "category": "吊具",
+    "item_id": "F006006",
+    "action": "領用",
+    "user": "諾瑞兒"
+  },
+  {
+    "timestamp": "2026-06-02 09:03:05",
+    "category": "吊具",
+    "item_id": "F006106",
+    "action": "領用",
+    "user": "喬賽多"
+  },
+  {
+    "timestamp": "2026-06-02 09:02:59",
+    "category": "吊具",
+    "item_id": "F006105",
+    "action": "領用",
+    "user": "喬賽多"
+  },
+  {
+    "timestamp": "2026-06-02 09:02:52",
+    "category": "吊具",
+    "item_id": "F006104",
+    "action": "領用",
+    "user": "喬賽多"
+  },
+  {
+    "timestamp": "2026-06-02 09:02:32",
+    "category": "吊具",
+    "item_id": "F006103",
+    "action": "領用",
+    "user": "喬賽多"
+  },
+  {
+    "timestamp": "2026-06-02 09:02:23",
+    "category": "吊具",
+    "item_id": "F006106",
+    "action": "歸還",
+    "user": "喬賽多"
+  },
+  {
+    "timestamp": "2026-06-02 09:02:21",
+    "category": "吊具",
+    "item_id": "F006105",
+    "action": "歸還",
+    "user": "喬賽多"
+  },
+  {
+    "timestamp": "2026-06-02 09:02:18",
+    "category": "吊具",
+    "item_id": "F006104",
+    "action": "歸還",
+    "user": "喬賽多"
+  },
+  {
+    "timestamp": "2026-06-02 09:02:15",
+    "category": "吊具",
+    "item_id": "F006103",
+    "action": "歸還",
+    "user": "喬賽多"
+  },
+  {
     "timestamp": "2026-06-01 09:00:45",
     "category": "吊具",
     "item_id": "F006106",

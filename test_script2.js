@@ -3,12 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>物料申請 - 協鴻工業 (v{{ cache_version }})</title>
+    <title>物料申請 - 協鴻工業</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
-    <!-- PDF 生成幫助庫 (本地) -->
-    <script src="{{ url_for('static', filename='jspdf.umd.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='html2canvas.min.js') }}"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         .page-container { padding: 2rem; max-width: 1400px; margin: 0 auto; }
         .tabs { display: flex; gap: 0; margin-bottom: 2rem; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
@@ -202,15 +200,6 @@
         .btn-confirm-sign { padding:0.5rem 1.5rem; background:linear-gradient(135deg,#10b981,#059669);
             color:white; border:none; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer; }
         .btn-confirm-sign:hover { box-shadow:0 3px 8px rgba(16,185,129,0.4); }
-
-        .btn-sync-icon {
-            width: 44px; height: 44px; border-radius: 12px; border: none;
-            background: #fbbf24; color: #92400e; font-size: 1.2rem;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            transition: all 0.2s; flex-shrink: 0;
-        }
-        .btn-sync-icon:hover { transform: translateY(-2px); background: #f59e0b; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
@@ -253,13 +242,12 @@
     <main class="page-container">
         <h2 style="margin-bottom: 1.5rem; color: #333;">📋 物料申請管理</h2>
 
-        <div style="display:flex; align-items:center; gap:1rem; margin-bottom:2rem;">
-            <div class="tabs" style="flex:1; margin-bottom:0;">
-                <button class="tab-btn active" onclick="switchTab('delivery')">📅 鑄件允收交期</button>
-                <button class="tab-btn" onclick="switchTab('shipping')">🚚 出貨單申請</button>
-            </div>
-            <button class="btn-sync-icon" onclick="manualSync()" title="尋找並上傳本機舊資料">
-                ⬆️
+        <!-- 頁籤 -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('delivery')">📅 鑄件允收交期</button>
+            <button class="tab-btn" onclick="switchTab('shipping')">🚚 出貨單申請</button>
+            <button class="tab-btn" style="background:#fbbf24; color:#92400e; flex:0.4; font-size:0.9rem;" onclick="manualSync()">
+                <span style="font-size:0.75em; margin-right:4px;">⬆️</span>尋找並上傳舊資料
             </button>
         </div>
 
@@ -278,14 +266,6 @@
                         <button class="btn btn-primary btn-sm" style="font-size:0.8rem;" onclick="openShortagePicker('delivery')">📋 從缺料分析挑選</button>
                     </div>
                     <div class="form-grid">
-                        <div class="form-group">
-                            <label>廠區</label>
-                            <select id="d-factory">
-                                <option value="本廠">本廠</option>
-                                <option value="三廠">三廠</option>
-                                <option value="外部廠商">外部廠商</option>
-                            </select>
-                        </div>
                         <div class="form-group">
                             <label>零件類型</label>
                             <select id="d-partType">
@@ -318,8 +298,8 @@
                             <input type="number" id="d-quantity" min="1" placeholder="例：10">
                         </div>
                         <div class="form-group" style="grid-column: 1/-1;">
-                            <label>機號</label>
-                            <input type="text" id="d-remark" placeholder="例：HSA-320EAY">
+                            <label>備註</label>
+                            <textarea id="d-remark" placeholder="其他說明..."></textarea>
                         </div>
                     </div>
                     <div class="section-actions">
@@ -328,23 +308,10 @@
                 </div>
 
                 <!-- 交期列表 -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; margin-top: 1rem;">
-                    <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem; color: #2563eb;">📋 允收交期紀錄</h3>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <label style="font-size: 0.9rem; font-weight: 600; color: #64748b;">廠區篩選：</label>
-                        <select id="d-factoryFilter" onchange="renderDelivery()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color, #ccc); font-family: inherit; cursor: pointer; color: #333;">
-                            <option value="all">全部</option>
-                            <option value="本廠">本廠</option>
-                            <option value="三廠">三廠</option>
-                            <option value="外部廠商">外部廠商</option>
-                        </select>
-                    </div>
-                </div>
                 <div style="overflow-x:auto;">
                     <table class="delivery-table" id="deliveryTable">
                         <thead>
                             <tr>
-                                <th>廠區</th>
                                 <th>零件類型</th>
                                 <th>品號</th>
                                 <th>物料說明</th>
@@ -352,7 +319,7 @@
                                 <th>預計允收日期</th>
                                 <th>加工課回覆交期</th>
                                 <th>狀態</th>
-                                <th>機號</th>
+                                <th>備註</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
@@ -380,14 +347,6 @@
                     </div>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>廠區 <span style="color:#dc2626">*</span></label>
-                            <select id="s-factory">
-                                <option value="本廠">本廠</option>
-                                <option value="三廠">三廠</option>
-                                <option value="外部廠商">外部廠商</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
                             <label>廠商編號 <span style="color:#dc2626">*</span></label>
                             <input type="text" id="s-vendorNo" value="1G0042" readonly style="background:#f5f5f5;">
                         </div>
@@ -400,8 +359,8 @@
                             <input type="date" id="s-shipDate">
                         </div>
                         <div class="form-group">
-                            <label>採購單號 <span style="color:#dc2626">*</span></label>
-                            <input type="text" id="s-poNo" placeholder="例：PO-2026-001" required>
+                            <label>採購單號</label>
+                            <input type="text" id="s-poNo" placeholder="例：PO-2026-001">
                         </div>
                         <div class="form-group">
                             <label>品號 <span style="color:#dc2626">*</span></label>
@@ -412,7 +371,7 @@
                             <input type="text" id="s-partName" placeholder="例：底座加工品">
                         </div>
                         <div class="form-group">
-                            <label>圖號版本</label>
+                            <label>圖號</label>
                             <input type="text" id="s-drawingNo" placeholder="例：DWG-2026-001">
                         </div>
                         <div class="form-group">
@@ -447,30 +406,15 @@
                 </div>
 
                 <!-- 出貨申請列表 -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; margin-top: 2rem;">
-                    <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem; color: #2563eb;">📋 出貨紀錄</h3>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <label style="font-size: 0.9rem; font-weight: 600; color: #64748b;">廠區篩選：</label>
-                        <select id="s-factoryFilter" onchange="renderShipping()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color, #ccc); font-family: inherit; cursor: pointer; color: #333; margin-right: 1rem;">
-                            <option value="all">全部</option>
-                            <option value="本廠">本廠</option>
-                            <option value="三廠">三廠</option>
-                            <option value="外部廠商">外部廠商</option>
-                        </select>
-                        <label for="shippingMonthFilter" style="font-size: 0.9rem; font-weight: 600; color: #64748b;">篩選月份：</label>
-                        <input type="month" id="shippingMonthFilter" onchange="renderShipping()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color, #ccc); font-family: inherit; cursor: pointer; color: #333;">
-                    </div>
-                </div>
                 <div style="overflow-x:auto;">
-                    <table class="shipping-table" id="shippingTable">
+                    <table class="shipping-table">
                         <thead>
                             <tr>
-                                <th style="width: 5%;">廠區</th>
                                 <th style="width: 15%;">廠商資訊</th>
                                 <th style="width: 10%;">交貨日期</th>
                                 <th style="width: 10%;">採購/工單</th>
                                 <th style="width: 20%;">物料資訊</th>
-                                <th style="width: 10%;">圖號版本</th>
+                                <th style="width: 10%;">圖號</th>
                                 <th style="width: 5%;">數量</th>
                                 <th style="width: 15%;">鑄件身分證</th>
                                 <th style="width: 5%;">狀態</th>
@@ -484,16 +428,12 @@
                 </div>
             </div>
         </div>
-        <div style="text-align: center; color: #bbb; font-size: 0.75rem; margin-top: 2rem; padding-bottom: 1rem;">
-            系統版本: {{ cache_version }} | 最後更新: 2026-05-13 (縮小同步按鈕 & PDF修復)
-        </div>
     </main>
 </div>
 
 <!-- Toast 通知 -->
 <div id="toast" class="toast"></div>
 
-<script>
     // ===== 頁籤切換 =====
     function switchTab(tabName) {
         document.querySelectorAll('.tab-btn').forEach((btn, i) => {
@@ -533,16 +473,6 @@
         const res = await fetchFromAPI('/api/material-request/shipping');
         if (res.success) {
             shippingRecords = res.data;
-            
-            // 設定月份選擇器預設為本月
-            const monthFilter = document.getElementById('shippingMonthFilter');
-            if (monthFilter && !monthFilter.value) {
-                const now = new Date();
-                const year = now.getFullYear();
-                const month = String(now.getMonth() + 1).padStart(2, '0');
-                monthFilter.value = `${year}-${month}`;
-            }
-            
             renderShipping();
         }
     }
@@ -556,18 +486,11 @@
         setTimeout(() => t.classList.remove('show'), 3000);
     }
 
-    function getStatusClass(expectedDate, replyDate) {
-        const dateStr = replyDate || expectedDate;
+    function getStatusClass(dateStr) {
         if (!dateStr) return { label: '未設定', cls: 'status-pending' };
         const today = new Date(); today.setHours(0,0,0,0);
         const d = new Date(dateStr);
         const diff = Math.ceil((d - today) / 86400000);
-        
-        if (!replyDate) {
-            if (diff < 0) return { label: '待回覆 (已逾期)', cls: 'status-rejected' };
-            return { label: '待回覆', cls: 'status-pending' };
-        }
-        
         if (diff < 0) return { label: '已逾期', cls: 'status-rejected' };
         if (diff <= 7) return { label: `還有 ${diff} 天`, cls: 'status-pending' };
         return { label: '正常', cls: 'status-approved' };
@@ -581,43 +504,35 @@
     // ===== 允收交期 =====
     function renderDelivery() {
         const tbody = document.getElementById('deliveryTableBody');
-        const filter = document.getElementById('d-factoryFilter') ? document.getElementById('d-factoryFilter').value : 'all';
         if (!tbody) return;
-        
-        let filteredRecords = [...deliveryRecords];
-        if (filter !== 'all') {
-            filteredRecords = filteredRecords.filter(r => (r.factory || '本廠') === filter);
-        }
-        
-        if (!filteredRecords.length) {
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:2rem;">尚無資料，或該廠區無符合資料</td></tr>';
+        if (!deliveryRecords.length) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:2rem;">尚無資料，請點擊「新增」</td></tr>';
             return;
         }
-        const sorted = filteredRecords.sort((a, b) => (a.expectedDate || '9999') > (b.expectedDate || '9999') ? 1 : -1);
+        const sorted = [...deliveryRecords].sort((a, b) => (a.expectedDate || '9999') > (b.expectedDate || '9999') ? 1 : -1);
         tbody.innerHTML = sorted.map((r, i) => {
-            const st = getStatusClass(r.expectedDate, r.replyDate);
+            const st = getStatusClass(r.expectedDate);
             const badgeCls = PART_BADGE[r.partType] || '';
-            const factoryText = r.factory || '本廠';
             return `
             <tr>
-                <td><span style="font-weight:600; color:#374151;">${factoryText}</span></td>
                 <td><span class="part-badge ${badgeCls}">${r.partType}</span></td>
                 <td><code style="font-size:0.85rem;">${r.partNo}</code></td>
                 <td>${r.partDesc || '-'}</td>
                 <td style="font-weight:600;">${r.quantity || '-'}</td>
                 <td>
-                    <input type="date" id="expectedDate-${r.id}" value="${r.expectedDate || ''}"
+                    <input type="date" value="${r.expectedDate || ''}"
+                        onchange="updateDeliveryDate(${r.id}, 'expectedDate', this.value)"
                         style="font-size:0.85rem;">
                 </td>
                 <td>
-                    <input type="date" id="replyDate-${r.id}" value="${r.replyDate || ''}"
+                    <input type="date" value="${r.replyDate || ''}"
+                        onchange="updateDeliveryDate(${r.id}, 'replyDate', this.value)"
                         style="font-size:0.85rem; border-color: #fbbf24;">
                 </td>
                 <td><span class="status-tag ${st.cls}">${st.label}</span></td>
-                <td style="font-weight:600; color:#4f46e5;">${r.remark || '-'}</td>
+                <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.remark || ''}">${r.remark || '-'}</td>
                 <td>
                     <div style="display:flex; gap:0.4rem;">
-                        <button class="btn btn-success btn-sm" style="background: linear-gradient(135deg, #10b981, #059669); color:white;" onclick="saveDeliveryDates(${r.id})">💾 儲存</button>
                         <button class="btn btn-pdf btn-sm" style="background: linear-gradient(135deg, #6366f1, #4f46e5); color:white;" onclick="sendDeliveryMail(${r.id})">📧 Mail</button>
                         <button class="btn btn-danger btn-sm" onclick="deleteDelivery(${r.id})">🗑️ 刪除</button>
                     </div>
@@ -627,7 +542,6 @@
     }
 
     async function addDeliveryRecord() {
-        const factory = document.getElementById('d-factory').value;
         const partType = document.getElementById('d-partType').value;
         const partNo = document.getElementById('d-partNo').value.trim();
         const partDesc = document.getElementById('d-partDesc').value.trim();
@@ -642,7 +556,7 @@
         }
         
         const record = {
-            factory, partType, partNo, partDesc, expectedDate, replyDate, quantity, remark,
+            partType, partNo, partDesc, expectedDate, replyDate, quantity, remark,
             createdAt: new Date().toLocaleDateString('zh-TW')
         };
         
@@ -654,12 +568,8 @@
         if (res.success) {
             deliveryRecords.push(res.data);
             renderDelivery();
-            ['d-factory', 'd-partType','d-partNo','d-partDesc','d-expectedDate','d-replyDate','d-quantity','d-remark']
-                .forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el.tagName === 'SELECT' && id === 'd-factory') el.value = '本廠';
-                    else el.value = '';
-                });
+            ['d-partType','d-partNo','d-partDesc','d-expectedDate','d-replyDate','d-quantity','d-remark']
+                .forEach(id => { document.getElementById(id).value = ''; });
             showToast('✅ 允收交期已新增');
         } else {
             showToast('新增失敗', 'error');
@@ -678,37 +588,6 @@
         }
     }
 
-    async function saveDeliveryDates(id) {
-        const expectedDate = document.getElementById(`expectedDate-${id}`).value;
-        const replyDate = document.getElementById(`replyDate-${id}`).value;
-        
-        showToast('正在儲存交期...', 'success');
-        
-        // 儲存預計允收日期
-        const res1 = await fetchFromAPI(`/api/material-request/delivery/${id}/update`, {
-            method: 'POST',
-            body: JSON.stringify({ field: 'expectedDate', value: expectedDate })
-        });
-        
-        // 儲存加工課回覆交期
-        const res2 = await fetchFromAPI(`/api/material-request/delivery/${id}/update`, {
-            method: 'POST',
-            body: JSON.stringify({ field: 'replyDate', value: replyDate })
-        });
-        
-        if (res1.success && res2.success) {
-            const rec = deliveryRecords.find(r => r.id === id);
-            if (rec) {
-                rec.expectedDate = expectedDate;
-                rec.replyDate = replyDate;
-            }
-            renderDelivery();
-            showToast('💾 允收與加工課回覆交期已儲存！');
-        } else {
-            showToast('❌ 儲存失敗', 'error');
-        }
-    }
-
     async function deleteDelivery(id) {
         if (!confirm('確定要刪除這筆允收交期紀錄嗎？')) return;
         const res = await fetchFromAPI(`/api/material-request/delivery/${id}`, { method: 'DELETE' });
@@ -722,92 +601,24 @@
     function sendDeliveryMail(id) {
         const r = deliveryRecords.find(x => x.id === id);
         if (!r) return;
-        showToast('正在產生 PDF，請稍候...');
-        downloadDeliveryPDF(r).then(() => {
-            const subject = `【協鴻工業】鑄件允收交期通知 - ${r.partNo} (機號:${r.remark || '-'})`;
-            const body = `您好，
-
-這是協鴻工業的加工鑄件允收交期通知，詳細資訊如下：
-
-● 廠區：${r.factory || '本廠'}
-● 零件類型：${r.partType || '-'}
-● 品號：${r.partNo || '-'}
-● 物料說明：${r.partDesc || '-'}
-● 數量：${r.quantity || '-'}
-● 預計允收日期：${r.expectedDate || '-'}
-● 加工課回覆交期：${r.replyDate || '-'}
-● 機號 (工單)：${r.remark || '-'}
-
-附件 PDF 已為您自動下載，請手動將 PDF 附加至郵件中發送。
-謝謝！`;
-            openMailModal(subject, body);
-            showToast('✅ PDF 已下載！請配合郵件小助手寄出');
-        }).catch(err => {
-            console.error(err);
-            showToast('❗ PDF 產生失敗', 'error');
-        });
-    }
-
-    async function downloadDeliveryPDF(r) {
-        const tempDiv = document.createElement('div');
-        tempDiv.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:794px;background:white;padding:48px;font-family:"Noto Sans TC",sans-serif;color:#333;line-height:1.6;';
-        tempDiv.innerHTML = `
-            <div style="text-align:center;border-bottom:3px double #333;padding-bottom:15px;margin-bottom:24px;">
-                <div style="font-size:26px;font-weight:bold;letter-spacing:2px;">協鴻工業股份有限公司</div>
-                <div style="font-size:16px;color:#555;margin-top:6px;">${r.factory || '本廠'} - 鑄件允收交期通知單</div>
-            </div>
-            <table style="width:100%;border-collapse:collapse;">
-                <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;width:25%;文字對齊:左;">零件類型</th><td style="border:1px solid #333;padding:10px;">${r.partType || '-'}</td>
-                    <th style="border:1px solid #333;padding:10px;background:#f8fafc;文字對齊:左;">品號</th><td style="border:1px solid #333;padding:10px;font-weight:bold;">${r.partNo || '-'}</td></tr>
-                <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;">物料說明</th><td colspan="3" style="border:1px solid #333;padding:10px;">${r.partDesc || '-'}</td></tr>
-                <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;">數量</th><td style="border:1px solid #333;padding:10px;font-size:1.2em;font-weight:bold;color:#059669;">${r.quantity || '-'}</td>
-                    <th style="border:1px solid #333;padding:10px;background:#f8fafc;">預計允收日期</th><td style="border:1px solid #333;padding:10px;">${r.expectedDate || '-'}</td></tr>
-                <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;">加工課回覆交期</th><td style="border:1px solid #333;padding:10px;">${r.replyDate || '-'}</td>
-                    <th style="border:1px solid #333;padding:10px;background:#f8fafc;">機號</th><td style="border:1px solid #333;padding:10px;">${r.remark || '-'}</td></tr>
-            </table>
-            <div style="margin-top:48px;text-align:right;font-size:11px;color:#888;border-top:1px solid #eee;padding-top:10px;">列印時間：${new Date().toLocaleString('zh-TW')}</div>
-        `;
-        document.body.appendChild(tempDiv);
-        try {
-            const canvas = await html2canvas(tempDiv, { scale: 1.0, useCORS: true, backgroundColor: '#ffffff' });
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            const imgW = 210;
-            const imgH = (canvas.height * imgW) / canvas.width;
-            pdf.addImage(canvas.toDataURL('image/jpeg', 0.4), 'JPEG', 0, 0, imgW, Math.min(imgH, 297), undefined, 'FAST');
-            pdf.save(`允收交期-${r.partNo}.pdf`);
-        } finally {
-            document.body.removeChild(tempDiv);
-        }
+        const subject = `【協鴻工業】鑄件允收交期通知 - ${r.partNo}`;
+        const body = `您好：\n\n以下為鑄件允收交期更新資訊：\n\n● 零件類型：${r.partType}\n● 品號：${r.partNo}\n● 物料說明：${r.partDesc || '-'}\n● 數量：${r.quantity || '-'}\n● 預計允收日期：${r.expectedDate || '未設定'}\n● 加工課回覆交期：${r.replyDate || '未設定'}\n● 備註：${r.remark || '-'}\n\n此郵件由系統自動產生，謝謝。`;
+        const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        window.location.href = mailtoUrl;
+        showToast('已開啟郵件軟體');
     }
 
     // ===== 出貨單申請 =====
     function renderShipping() {
         const tbody = document.getElementById('shippingTableBody');
         if (!tbody) return;
-        
-        let filteredRecords = [...shippingRecords];
-        
-        const factoryFilter = document.getElementById('s-factoryFilter') ? document.getElementById('s-factoryFilter').value : 'all';
-        if (factoryFilter !== 'all') {
-            filteredRecords = filteredRecords.filter(r => (r.factory || '本廠') === factoryFilter);
-        }
-
-        const monthFilter = document.getElementById('shippingMonthFilter');
-        if (monthFilter && monthFilter.value) {
-            filteredRecords = filteredRecords.filter(r => r.shipDate && r.shipDate.startsWith(monthFilter.value));
-        }
-
-        if (!filteredRecords.length) {
-            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;padding:2rem;">該月份尚無出貨紀錄，或尚未填寫表單</td></tr>';
+        if (!shippingRecords.length) {
+            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;padding:2rem;">尚無出貨申請，請填寫上方表單</td></tr>';
             return;
         }
-        const sorted = filteredRecords.sort((a, b) => b.id - a.id);
-        tbody.innerHTML = sorted.map(r => {
-            const factoryText = r.factory || '本廠';
-            return `
+        const sorted = [...shippingRecords].sort((a, b) => b.id - a.id);
+        tbody.innerHTML = sorted.map(r => `
             <tr>
-                <td><span style="font-weight:600; color:#374151;">${factoryText}</span></td>
                 <td>
                     <div style="font-weight:600; color:#111;">${r.vendorName || '-'}</div>
                     <div style="font-size:0.75rem; color:#666;">${r.vendorNo || '-'}</div>
@@ -832,15 +643,14 @@
                         <button class="btn btn-sign btn-sm" onclick="openSignModal(${r.id})" title="簽核">✍️</button>
                         <button class="btn btn-pdf btn-sm" onclick="sendShippingMail(${r.id})" title="Mail">📧</button>
                         ${r.status === '已核准' ? `<button class="btn btn-pdf btn-sm" onclick="exportToPDF(${r.id})" title="PDF">📄</button>` : ''}
-                        <button class="btn btn-danger btn-sm" onclick="deleteShippingRecord(${r.id})" title="刪除">🗑️</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteShipping(${r.id})" title="刪除">🗑️</button>
                     </div>
                 </td>
             </tr>
-        `}).join('');
+        `).join('');
     }
 
     async function addShippingRequest() {
-        const factory = document.getElementById('s-factory').value;
         const vendorNo = document.getElementById('s-vendorNo').value.trim();
         const vendorName = document.getElementById('s-vendorName').value.trim();
         const shipDate = document.getElementById('s-shipDate').value;
@@ -855,13 +665,13 @@
         const castId2 = document.getElementById('s-castId2').value.trim();
         const castId3 = document.getElementById('s-castId3').value.trim();
 
-        if (!vendorNo || !vendorName || !shipDate || !poNo || !partNo || !qty) {
-            showToast('請填寫所有必填欄位 (包含採購單號)', 'error');
+        if (!vendorNo || !vendorName || !shipDate || !partNo || !qty) {
+            showToast('請填寫必要欄位', 'error');
             return;
         }
 
         const record = {
-            factory, vendorNo, vendorName, shipDate, poNo, partNo, partName, drawingNo, qty, 
+            vendorNo, vendorName, shipDate, poNo, partNo, partName, drawingNo, qty, 
             workOrder, applicant, castId1, castId2, castId3,
             createdAt: new Date().toLocaleString('zh-TW')
         };
@@ -874,12 +684,8 @@
         if (res.success) {
             shippingRecords.push(res.data);
             renderShipping();
-            ['s-factory','s-poNo','s-partNo','s-partName','s-drawingNo','s-qty','s-workOrder','s-castId1','s-castId2','s-castId3']
-                .forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el && el.tagName === 'SELECT' && id === 's-factory') el.value = '本廠';
-                    else if (el) el.value = '';
-                });
+            ['s-poNo','s-partNo','s-partName','s-drawingNo','s-qty','s-workOrder','s-castId1','s-castId2','s-castId3']
+                .forEach(id => { document.getElementById(id).value = ''; });
             showToast('🚚 出貨申請已提交');
             switchTab('shipping');
         } else {
@@ -911,7 +717,7 @@
                 if (target === 'delivery') {
                     modalTitle.innerHTML = '📋 從缺料分析挑選項目';
                 } else {
-                    modalTitle.innerHTML = '📋 從所有系統工單挑選鑄件出貨項目';
+                    modalTitle.innerHTML = '📋 從工單需求挑選項目';
                 }
             }
 
@@ -929,77 +735,17 @@
             }
 
             try {
-                // 1. 載入缺料分析資料
-                const resShortage = await fetch('/api/shortage');
-                const dataShortage = await resShortage.json();
-                let baseShortageList = [];
-                if (dataShortage.success) {
-                    baseShortageList = dataShortage.data;
-                }
-
-                if (target === 'delivery') {
-                    // 允收交期：只挑選目前狀態為「缺料」的鑄件
-                    shortageData = baseShortageList.filter(item => item.狀態 === '缺料');
-                    renderPickerList(shortageData);
-                } else {
-                    // 出貨單申請：以「底座、工作台、橫樑、立柱」開立，品號從工單對應表查詢
-                    
-                    // 1.1 載入準確的工單 → 品號對應表（後端從缺料分析直接查詢，精確至工單號碼）
-                    const resCastingMap = await fetch('/api/orders/casting-map');
-                    const dataCastingMap = await resCastingMap.json();
-                    const castingMap = dataCastingMap.success ? dataCastingMap.data : {};
-
-                    // 1.2 載入所有系統工單
-                    const resOrders = await fetch('/api/orders');
-                    const dataOrders = await resOrders.json();
-                    
-                    if (dataOrders.orders) {
-                        const castingTypes = ['底座', '工作台', '橫樑', '立柱'];
-                        const expandedList = [];
-                        
-                        dataOrders.orders.forEach(o => {
-                            const machineModel = o.品號說明 || '';
-                            const workOrder = o.工單 || '';
-                            const woPartsMap = castingMap[workOrder] || {};
-                            
-                            castingTypes.forEach(partType => {
-                                // 精確從工單號碼查詢對應品號（最準確，支援同類型有多個零件如主副底座）
-                                const matches = woPartsMap[partType];
-                                if (matches && matches.length > 0) {
-                                    matches.forEach(match => {
-                                        expandedList.push({
-                                            零件類型: partType,
-                                            品號: match.品號 || '',
-                                            物料說明: match.物料說明 || `${partType}加工品 (${machineModel})`,
-                                            需求數量: 1,
-                                            已領料: 0,
-                                            缺料數量: 1,
-                                            工單號碼: workOrder,
-                                            機型: machineModel
-                                        });
-                                    });
-                                } else {
-                                    // 預設無對應品號時新增一筆空白品號項目
-                                    expandedList.push({
-                                        零件類型: partType,
-                                        品號: '',
-                                        物料說明: `${partType}加工品 (${machineModel})`,
-                                        需求數量: 1,
-                                        已領料: 0,
-                                        缺料數量: 1,
-                                        工單號碼: workOrder,
-                                        機型: machineModel
-                                    });
-                                }
-                            });
-                        });
-                        
-                        shortageData = expandedList;
-                        renderPickerList(shortageData);
+                const res = await fetch('/api/shortage');
+                const data = await res.json();
+                if (data.success) {
+                    if (target === 'delivery') {
+                        shortageData = data.data.filter(item => item.狀態 === '缺料');
+                    } else {
+                        shortageData = data.data;
                     }
+                    renderPickerList(shortageData);
                 }
             } catch (err) {
-                console.error(err);
                 if (listBody) listBody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;padding:2rem;">載入失敗</td></tr>';
             }
         } catch (e) {
@@ -1016,18 +762,20 @@
 
         listBody.innerHTML = data.map(item => {
             const isDelivery = currentPickerTarget === 'delivery';
-            const showQty = isDelivery ? item.缺料數量 : (item.需求數量 - item.已領料);
+            const showQty = isDelivery ? item.缺料數量 : (item.需求數量 - item.已領數量);
             
             return `
             <tr>
+                <td>${item.工單編號 || '-'}</td>
+                <td><strong style="color:#0f766e;">${item.零件品號 || '-'}</strong></td>
+                <td><div style="font-size:0.8rem;color:#666;max-width:200px;white-space:normal;">${item.零件品名 || '-'}</div></td>
                 <td>${item.零件類型 || '-'}</td>
-                <td><strong style="color:#0f766e;">${item.品號 || '-'}</strong></td>
-                <td><div style="font-size:0.8rem;color:#666;max-width:200px;white-space:normal;">${item.物料說明 || '-'}</div></td>
-                <td><span style="font-weight:bold;color:#b91c1c;">${item.需求數量 || '0'}</span></td>
-                <td>${item.已領料 || '0'}</td>
-                <td>${item.工單號碼 || '-'}</td>
+                <td><span style="font-weight:bold;color:#b91c1c;">${showQty}</span></td>
                 <td>
-                    <button class="btn btn-primary btn-sm" onclick="selectShortageItem('${item.工單號碼}','${(item.品號 || '').replace(/'/g, '\\\'')}','${(item.物料說明 || '').replace(/'/g, '\\\'')}','${item.零件類型}','${item.缺料數量}','${item.需求數量}','${item.已領料}','${(item.機型 || '').replace(/'/g, '\\\'')}')">選擇</button>
+                    <span class="status-tag ${item.狀態 === '缺料' ? 'status-pending' : 'status-approved'}">${item.狀態 || '-'}</span>
+                </td>
+                <td>
+                    <button class="btn btn-primary btn-sm" onclick="selectShortageItem('${item.工單編號}','${item.零件品號}','${item.零件品名}','${item.零件類型}','${item.缺料數量}','${item.需求數量}','${item.已領數量}')">選擇</button>
                 </td>
             </tr>
             `;
@@ -1037,22 +785,21 @@
     function filterPicker() {
         const query = document.getElementById('pickerSearch').value.toLowerCase();
         const filtered = shortageData.filter(item => 
-            (item.工單號碼 && item.工單號碼.toLowerCase().includes(query)) ||
-            (item.品號 && item.品號.toLowerCase().includes(query)) ||
-            (item.物料說明 && item.物料說明.toLowerCase().includes(query))
+            (item.工單編號 && item.工單編號.toLowerCase().includes(query)) ||
+            (item.零件品號 && item.零件品號.toLowerCase().includes(query)) ||
+            (item.零件品名 && item.零件品名.toLowerCase().includes(query))
         );
         renderPickerList(filtered);
     }
 
-    function selectShortageItem(workOrder, partNo, partDesc, partType, shortageQty, demandQty, pickedQty, machineModel) {
+    function selectShortageItem(workOrder, partNo, partDesc, partType, shortageQty, demandQty, pickedQty) {
         if (currentPickerTarget === 'delivery') {
             document.getElementById('d-partType').value = partType;
             document.getElementById('d-partNo').value = partNo;
             document.getElementById('d-partDesc').value = partDesc;
-            document.getElementById('d-quantity').value = Math.abs(shortageQty) || 1;
-            document.getElementById('d-remark').value = workOrder || '';
+            document.getElementById('d-quantity').value = Math.abs(shortageQty);
             switchTab('delivery');
-            showToast('已帶入缺料與機號資料');
+            showToast('已帶入缺料資料');
         } else {
             const remainingQty = Math.max(0, parseInt(demandQty) - parseInt(pickedQty));
             document.getElementById('s-partNo').value = partNo;
@@ -1097,174 +844,6 @@
         } catch (e) {
             alert('上傳失敗: ' + e.message);
         }
-    }
-
-    function sendShippingMail(id) {
-        const r = shippingRecords.find(x => x.id === id);
-        if (!r) return;
-        showToast('正在產生 PDF，請稍候...');
-        downloadShippingPDF(r).then(() => {
-            const today = new Date();
-            const dateStr = `${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
-            const subject = `出貨銷單_${r.vendorName || ''}_${r.partNo || ''} (${dateStr})`;
-            const body = `您好，
-
-這是出貨單申請資訊，詳細資訊如下：
-
-● 單據編號：MR-SHIP-${r.id.toString().padStart(6,'0')}
-● 廠區：${r.factory || '本廠'}
-● 廠商名稱：${r.vendorName || '-'}
-● 交貨日期：${r.shipDate || '-'}
-● 採購單號：${r.poNo || '-'}
-● 品號：${r.partNo || '-'}
-● 物料名稱：${r.partName || '-'}
-● 數量：${r.qty || '-'}
-● 工單號碼：${r.workOrder || '-'}
-● 申請人：${r.applicant || '-'}
-
-附件 PDF 已為您自動下載，請手動將 PDF 附加至郵件中發送。
-謝謝！`;
-            openMailModal(subject, body);
-            showToast('✅ PDF 已下載！請配合郵件小助手寄出');
-        }).catch(err => {
-            console.error(err);
-            showToast('❗ PDF 產生失敗', 'error');
-        });
-    }
-
-    async function downloadShippingPDF(r) {
-        const sigs = r.signatures || {};
-        const signImg = sigs['下流程簽收'] ? `<img src="${sigs['下流程簽收'].img}" style="max-height:60px;">` : '<span style="color:#ccc;">尚未簽核</span>';
-        const signName = sigs['下流程簽收'] ? sigs['下流程簽收'].name : '';
-        const signTime = sigs['下流程簽收'] ? sigs['下流程簽收'].time : '';
-
-        const tempDiv = document.createElement('div');
-        tempDiv.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:794px;background:white;padding:48px;font-family:"Noto Sans TC",sans-serif;color:#333;line-height:1.6;';
-        tempDiv.innerHTML = `
-            <div style="text-align:center;border-bottom:3px double #333;padding-bottom:15px;margin-bottom:24px;position:relative;">
-                <div style="font-size:26px;font-weight:bold;letter-spacing:2px;">協鴻工業股份有限公司</div>
-                <div style="font-size:16px;color:#555;margin-top:6px;">${r.factory || '本廠'} - 加工鑄件出貨申請單</div>
-                <div style="position:absolute;right:0;bottom:15px;font-size:11px;color:#888;">單據編號：MR-SHIP-${r.id.toString().padStart(6,'0')}</div>
-            </div>
-            <table style="width:100%;border-collapse:collapse;margin-bottom:24px;table-layout:fixed;">
-                <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;width:20%;">廠商名稱</th><td style="border:1px solid #333;padding:10px;">${r.vendorName}</td>
-                    <th style="border:1px solid #333;padding:10px;background:#f8fafc;width:20%;">廠商編號</th><td style="border:1px solid #333;padding:10px;">${r.vendorNo}</td></tr>
-                <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;">交貨日期</th><td style="border:1px solid #333;padding:10px;font-weight:bold;">${r.shipDate}</td>
-                    <th style="border:1px solid #333;padding:10px;background:#f8fafc;">申請人</th><td style="border:1px solid #333;padding:10px;">${r.applicant || '-'}</td></tr>
-                <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;">採購單號</th><td style="border:1px solid #333;padding:10px;">${r.poNo || '-'}</td>
-                    <th style="border:1px solid #333;padding:10px;background:#f8fafc;">工單號碼</th><td style="border:1px solid #333;padding:10px;">${r.workOrder || '-'}</td></tr>
-                <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;">品號</th><td colspan="3" style="border:1px solid #333;padding:10px;font-weight:bold;font-size:1.05em;">${r.partNo}</td></tr>
-                <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;">品名</th><td colspan="3" style="border:1px solid #333;padding:10px;">${r.partName || '-'}</td></tr>
-                <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;">圖號版本</th><td style="border:1px solid #333;padding:10px;">${r.drawingNo || '-'}</td>
-                    <th style="border:1px solid #333;padding:10px;background:#f8fafc;">交貨數量</th><td style="border:1px solid #333;padding:10px;font-weight:bold;font-size:1.2em;color:#d946ef;">${r.qty}</td></tr>
-                <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;">鑄件身分證</th><td colspan="3" style="border:1px solid #333;padding:10px;font-family:monospace;">${[r.castId1,r.castId2,r.castId3].filter(v=>v).join(' / ')||'-'}</td></tr>
-                <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;">備註</th><td colspan="3" style="border:1px solid #333;padding:10px;min-height:40px;">-</td></tr>
-            </table>
-            <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-                <div style="border:2px solid #333;padding:15px;width:260px;text-align:center;border-radius:8px;">
-                    <div style="font-weight:bold;font-size:15px;border-bottom:1px solid #333;padding-bottom:6px;margin-bottom:10px;background:#f8fafc;">下流程簽收蓋章</div>
-                    <div style="min-height:70px;display:flex;align-items:center;justify-content:center;">${signImg}</div>
-                    <div style="font-weight:bold;margin-top:6px;">${signName}</div>
-                    <div style="font-size:11px;color:#666;">${signTime}</div>
-                </div>
-            </div>
-            <div style="margin-top:32px;text-align:center;font-size:11px;color:#888;border-top:1px solid #eee;padding-top:10px;">列印時間：${new Date().toLocaleString('zh-TW')} | 本文件經由電子簽章核准</div>
-        `;
-        document.body.appendChild(tempDiv);
-        try {
-            const canvas = await html2canvas(tempDiv, { scale: 1.0, useCORS: true, backgroundColor: '#ffffff' });
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            const imgW = 210;
-            const imgH = (canvas.height * imgW) / canvas.width;
-            pdf.addImage(canvas.toDataURL('image/jpeg', 0.4), 'JPEG', 0, 0, imgW, Math.min(imgH, 297), undefined, 'FAST');
-            pdf.save(`出貨申請單-${r.partNo}-${r.id.toString().padStart(6,'0')}.pdf`);
-        } finally {
-            document.body.removeChild(tempDiv);
-        }
-    }
-
-    function exportToPDF(id) {
-        const r = shippingRecords.find(x => x.id === id);
-        if (!r) return;
-
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-            alert('彈出視窗被攔截，請允許開啟視窗以檢視 PDF');
-            return;
-        }
-        
-        const sigs = r.signatures || {};
-        const signImg = sigs['下流程簽收'] ? `<img src="${sigs['下流程簽收'].img}" style="max-height:70px;">` : '<div style="color:#ccc; padding:20px;">尚未簽核</div>';
-        const signName = sigs['下流程簽收'] ? sigs['下流程簽收'].name : '';
-        const signTime = sigs['下流程簽收'] ? sigs['下流程簽收'].time : '';
-
-        const html = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>協鴻工業 - 出貨申請單 (${r.partNo})</title>
-    <style>
-        /* 字體由系統字體提供，不阻塞列印視窗開啟 */
-        body { font-family: "Noto Sans TC", "微軟正黑體", "Microsoft JhengHei", sans-serif; padding: 40px; color: #333; line-height: 1.6; }
-        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px double #333; padding-bottom: 15px; position: relative; }
-        .title { font-size: 28px; font-weight: bold; letter-spacing: 2px; }
-        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; table-layout: fixed; }
-        .info-table th, .info-table td { border: 1px solid #333; padding: 12px; text-align: left; word-break: break-all; }
-        .info-table th { background: #f8fafc; width: 20%; font-weight: bold; }
-        .signature-area { margin-top: 40px; display: flex; justify-content: flex-end; }
-        .signature-box { border: 2px solid #333; padding: 15px; width: 280px; text-align: center; border-radius: 8px; }
-        .sig-title { font-weight: bold; font-size: 16px; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px; background: #f8fafc; }
-        .footer { margin-top: 60px; font-size: 11px; color: #666; text-align: center; border-top: 1px solid #eee; padding-top: 10px; }
-        @media print {
-            .no-print { display: none; }
-            body { padding: 0; }
-            .signature-box { break-inside: avoid; }
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="title">協鴻工業股份有限公司</div>
-        <div style="font-size: 18px; margin-top: 8px; color: #555;">加工鑄件出貨申請單</div>
-        <div style="position: absolute; right: 0; bottom: 15px; font-size: 12px;">單據編號：MR-SHIP-${r.id.toString().padStart(6, '0')}</div>
-    </div>
-    
-    <table class="info-table">
-        <tr><th>廠商名稱</th><td>${r.vendorName}</td><th>廠商編號</th><td>${r.vendorNo}</td></tr>
-        <tr><th>交貨日期</th><td>${r.shipDate}</td><th>申請人</th><td>${r.applicant || '-'}</td></tr>
-        <tr><th>採購單號</th><td>${r.poNo || '-'}</td><th>工單號碼</th><td>${r.workOrder || '-'}</td></tr>
-        <tr><th>品號</th><td colspan="3"><strong style="font-size: 1.1em;">${r.partNo}</strong></td></tr>
-        <tr><th>品名</th><td colspan="3">${r.partName || '-'}</td></tr>
-        <tr><th>圖號版本</th><td>${r.drawingNo || '-'}</td><th>交貨數量</th><td><strong style="font-size: 1.2em; color: #d946ef;">${r.qty}</strong></td></tr>
-        <tr><th>鑄件身分證</th><td colspan="3" style="font-family: monospace; font-size: 0.9em;">${[r.castId1, r.castId2, r.castId3].filter(v => v).join(' / ') || '-'}</td></tr>
-        <tr><th>備註</th><td colspan="3" style="min-height: 40px;">-</td></tr>
-    </table>
-
-    <div class="signature-area">
-        <div class="signature-box">
-            <div class="sig-title">下流程簽收蓋章</div>
-            <div style="min-height: 80px; display: flex; align-items: center; justify-content: center;">${signImg}</div>
-            <div style="margin-top: 5px; font-weight: bold;">${signName}</div>
-            <div style="font-size: 11px; color: #666; margin-top: 2px;">${signTime}</div>
-        </div>
-    </div>
-
-    <div class="footer">
-        列印時間：${new Date().toLocaleString('zh-TW')} | 本文件經由電子簽章核准，與紙本簽署具同等效力
-    </div>
-
-    <div class="no-print" style="margin-top: 40px; text-align: center; display: flex; gap: 10px; justify-content: center;">
-        <button onclick="window.print()" style="padding: 12px 30px; font-size: 16px; cursor: pointer; background: #059669; color: white; border: none; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">🖨️ 列印 / 儲存 PDF</button>
-        <button onclick="window.close()" style="padding: 12px 30px; font-size: 16px; cursor: pointer; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">❌ 關閉視窗</button>
-    </div>
-</body>
-</html>
-        `;
-
-        printWindow.document.write(html);
-        printWindow.document.close();
     }
 
     // ===== 初始化 =====
@@ -1433,56 +1012,6 @@
         }
     }
 
-    // ===== 郵件寄送小助手 =====
-    function openMailModal(subject, body) {
-        document.getElementById('mailSubject').value = subject;
-        document.getElementById('mailBody').value = body;
-        
-        window._currentMailSubject = subject;
-        window._currentMailBody = body;
-        
-        const savedMail = localStorage.getItem('companyInternalMail');
-        if (savedMail) {
-            document.getElementById('mailRecipient').value = savedMail;
-        }
-        
-        updateMailLinks();
-        
-        document.getElementById('mailModal').classList.add('open');
-    }
-
-    function updateMailLinks() {
-        const subject = window._currentMailSubject || '';
-        const body = window._currentMailBody || '';
-        const recipient = document.getElementById('mailRecipient').value.trim();
-        localStorage.setItem('companyInternalMail', recipient);
-        
-        // 設定 Mailto 連結
-        document.getElementById('btnMailto').href = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        
-        // 設定網頁版 Gmail 連結
-        document.getElementById('btnGmailWeb').href = `https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=${encodeURIComponent(recipient)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        
-        // 設定網頁版 Outlook 連結
-        document.getElementById('btnOutlookWeb').href = `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(recipient)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    }
-
-    function closeMailModal() {
-        document.getElementById('mailModal').classList.remove('open');
-    }
-
-    function copyMailText(id) {
-        const el = document.getElementById(id);
-        el.select();
-        el.setSelectionRange(0, 99999);
-        navigator.clipboard.writeText(el.value).then(() => {
-            showToast('📋 複製成功！');
-        }).catch(() => {
-            showToast('📋 複製失敗，請手動複製', 'error');
-        });
-    }
-</script>
-
 <!-- 缺料挑選 Modal -->
 <div id="pickerModal" class="modal-overlay" style="z-index:5000;">
     <div class="modal-box" style="max-width:900px;">
@@ -1547,60 +1076,6 @@
             <div class="info-grid" id="sm-info"></div>
             <div class="flow-title">🔖 簽核流程</div>
             <div class="flow-steps" id="sm-flow"></div>
-        </div>
-    </div>
-</div>
-
-<!-- 郵件寄送小助手 Modal -->
-<div id="mailModal" class="modal-overlay" style="z-index:6000;">
-    <div class="modal-box" style="max-width:550px; border-radius:16px; overflow:hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);">
-        <div class="modal-header" style="background: linear-gradient(135deg, #4f46e5, #3730a3); color: white; padding: 1.25rem 1.5rem;">
-            <h3 style="margin:0; font-size:1.15rem; display:flex; align-items:center; gap:0.5rem; color: white;">📧 郵件寄送小助手</h3>
-            <button class="modal-close" style="color:rgba(255,255,255,0.8); background:none; border:none; font-size:1.5rem; cursor:pointer;" onclick="closeMailModal()">&times;</button>
-        </div>
-        <div class="modal-body" style="padding:1.5rem; background:#f8fafc;">
-            <p style="margin-top:0; color:#475569; font-size:0.9rem; line-height:1.5; text-align: left;">
-               由於各電腦的預設郵件系統配置不同，我們為您提供多種發信管道。PDF 附件已為您自動下載，您可以一鍵複製內容手動貼上。
-            </p>
-            
-            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02); text-align: left;">
-                <div style="font-weight: 700; color: #1e293b; font-size: 0.85rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-                    <span>👥 收件人 (公司內部信箱)</span>
-                </div>
-                <input type="email" id="mailRecipient" placeholder="請填寫收件人信箱，系統會自動記憶..." oninput="updateMailLinks()" style="width:100%; padding:0.5rem 0.75rem; border:1px solid #cbd5e1; border-radius:8px; font-size:0.85rem; background:#fff; color:#334155; box-sizing: border-box; margin-bottom: 1rem;">
-
-                <div style="font-weight: 700; color: #1e293b; font-size: 0.85rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-                    <span>📬 郵件主旨</span>
-                    <button class="btn btn-primary btn-sm" style="font-size:0.75rem; padding:0.2rem 0.6rem; border-radius:6px; background:#4f46e5; color:white; border:none; cursor:pointer;" onclick="copyMailText('mailSubject')">📋 複製主旨</button>
-                </div>
-                <input type="text" id="mailSubject" readonly style="width:100%; padding:0.5rem 0.75rem; border:1px solid #cbd5e1; border-radius:8px; font-size:0.85rem; background:#f1f5f9; color:#334155; box-sizing: border-box;">
-                
-                <div style="font-weight: 700; color: #1e293b; font-size: 0.85rem; margin-top: 1rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-                    <span>📝 郵件內文</span>
-                    <button class="btn btn-primary btn-sm" style="font-size:0.75rem; padding:0.2rem 0.6rem; border-radius:6px; background:#4f46e5; color:white; border:none; cursor:pointer;" onclick="copyMailText('mailBody')">📋 複製內文</button>
-                </div>
-                <textarea id="mailBody" readonly rows="7" style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:8px; font-size:0.85rem; background:#f1f5f9; color:#334155; resize:none; line-height:1.5; font-family:inherit; box-sizing: border-box;"></textarea>
-            </div>
-            
-            <div style="display: flex; flex-direction: column; gap: 0.75rem; text-align: left;">
-                <div style="font-size: 0.8rem; font-weight: 700; color: #64748b;">⚡ 選擇您的發信管道：</div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <!-- Outlook Web -->
-                    <a id="btnOutlookWeb" target="_blank" class="btn" style="background:#0078d4; color:white; display:flex; align-items:center; justify-content:center; gap:0.5rem; padding:0.6rem; border-radius:8px; font-size:0.85rem; text-decoration:none; font-weight:600; cursor:pointer;">
-                        💻 網頁版 Outlook
-                    </a>
-                    <!-- Gmail Web -->
-                    <a id="btnGmailWeb" target="_blank" class="btn" style="background:#ea4335; color:white; display:flex; align-items:center; justify-content:center; gap:0.5rem; padding:0.6rem; border-radius:8px; font-size:0.85rem; text-decoration:none; font-weight:600; cursor:pointer;">
-                        🌐 網頁版 Gmail
-                    </a>
-                </div>
-                
-                <!-- Mailto Link -->
-                <a id="btnMailto" class="btn" style="background: linear-gradient(135deg, #4f46e5, #3b82f6); color:white; display:flex; align-items:center; justify-content:center; gap:0.5rem; padding:0.75rem; border-radius:8px; font-size:0.9rem; text-decoration:none; font-weight:600; text-align:center; cursor:pointer;">
-                    📩 啟動預設郵件軟體 (mailto)
-                </a>
-            </div>
         </div>
     </div>
 </div>

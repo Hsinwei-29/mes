@@ -11,7 +11,7 @@
     {
       "id": "3",
       "username": "guang",
-      "password_hash": "scrypt:32768:8:1$nqo2tBrS8N6vQPT4$7a57b578895fe68ee69e116e09abfae009c9d0906aac310ac97703837c813ee25a186c3457a09cdb5d9ced54c7af7bb8adb6b41b500893ad63e2ee8ca6cd6ea2",
+      "password_hash": "pbkdf2:sha256:260000$UM0pjlXHXMauPjq9$6c689fdbe5b605f0c1f47d5cef62da27288ed7a015119c73446e8b460b3e5245",
       "role": "admin",
       "created_at": "2026-01-30T23:11:25.368416",
       "chinese_name": "陳致光"

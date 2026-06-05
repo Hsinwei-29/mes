@@ -270,6 +270,16 @@ def calculate_shortage():
         print(f"鑄件庫存: {len(casting_inventory)} 個品號")
         print(f"工單數量: {len(workorder_map)} 筆")
         
+        # 載入缺料手動排除清單
+        overrides_file = os.path.join(os.path.dirname(__file__), 'shortage_overrides.json')
+        shortage_overrides = {}
+        if os.path.exists(overrides_file):
+            try:
+                with open(overrides_file, 'r', encoding='utf-8') as f:
+                    shortage_overrides = json.load(f)
+            except Exception as e:
+                print(f"Error loading shortage_overrides: {e}")
+
         # 3. 計算缺料
         shortage_list = []
         
@@ -311,6 +321,13 @@ def calculate_shortage():
                         keywords = ["已給", "OK", "已領", "不必", "跳過", "免領"]
                         if any((part_type in note_upper and kw in note_upper) for kw in keywords) or \
                            any((f"{part_type}{kw}" in note_upper) for kw in keywords):
+                            is_manually_cleared = True
+                            
+                    # 檢查 overrides.json 是否有手動銷帳
+                    wo_str = str(wo_number)
+                    if wo_str in shortage_overrides:
+                        override_parts = shortage_overrides[wo_str].get("parts", [])
+                        if "all" in override_parts or part_type in override_parts:
                             is_manually_cleared = True
                     
                     if is_manually_cleared:

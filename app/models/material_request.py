@@ -5,6 +5,17 @@ from datetime import datetime
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
 DELIVERY_FILE = os.path.join(DATA_DIR, 'delivery.json')
 SHIPPING_FILE = os.path.join(DATA_DIR, 'shipping.json')
+DELETED_RECORDS_FILE = os.path.join(DATA_DIR, 'deleted_records.json')
+
+def log_deleted_record(record_type, record, user):
+    deleted_records = load_json(DELETED_RECORDS_FILE)
+    deleted_records.append({
+        'deleted_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'deleted_by': user,
+        'record_type': record_type,
+        'record_data': record
+    })
+    save_json(DELETED_RECORDS_FILE, deleted_records)
 
 def ensure_data_dir():
     if not os.path.exists(DATA_DIR):
@@ -54,11 +65,14 @@ def update_delivery_record(record_id, field, value):
             return True
     return False
 
-def delete_delivery_record(record_id):
+def delete_delivery_record(record_id, user="Unknown"):
     records = get_delivery_records()
+    record_to_delete = next((r for r in records if r['id'] == record_id), None)
     new_records = [r for r in records if r['id'] != record_id]
     if len(new_records) != len(records):
         save_json(DELIVERY_FILE, new_records)
+        if record_to_delete:
+            log_deleted_record('delivery', record_to_delete, user)
         return True
     return False
 
@@ -76,11 +90,14 @@ def add_shipping_request(record):
     save_json(SHIPPING_FILE, records)
     return record
 
-def delete_shipping_record(record_id):
+def delete_shipping_record(record_id, user="Unknown"):
     records = get_shipping_records()
+    record_to_delete = next((r for r in records if r['id'] == record_id), None)
     new_records = [r for r in records if r['id'] != record_id]
     if len(new_records) != len(records):
         save_json(SHIPPING_FILE, new_records)
+        if record_to_delete:
+            log_deleted_record('shipping', record_to_delete, user)
         return True
     return False
 

@@ -913,7 +913,8 @@ def api_add_delivery():
 @api_bp.route('/material-request/delivery/<int:record_id>', methods=['DELETE'])
 @login_required
 def api_delete_delivery(record_id):
-    success = delete_delivery_record(record_id)
+    user = getattr(current_user, 'chinese_name', None) or current_user.username
+    success = delete_delivery_record(record_id, user)
     return jsonify({'success': success})
 
 @api_bp.route('/material-request/delivery/<int:record_id>/update', methods=['POST'])
@@ -946,7 +947,8 @@ def api_add_shipping():
 @api_bp.route('/material-request/shipping/<int:record_id>', methods=['DELETE'])
 @login_required
 def api_delete_shipping(record_id):
-    success = delete_shipping_record(record_id)
+    user = getattr(current_user, 'chinese_name', None) or current_user.username
+    success = delete_shipping_record(record_id, user)
     return jsonify({'success': success})
 
 @api_bp.route('/material-request/shipping/sign', methods=['POST'])
