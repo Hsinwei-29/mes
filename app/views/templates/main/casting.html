@@ -1448,17 +1448,26 @@
                                 isOut = true;
                             }
                             
-                            const action = isOut ? `<span class="badge-out">出庫</span>` : `<span class="badge-in">入庫</span>`;
-                            
-                            // 數量顯示處理，若差額為 0（例如初次建檔）則顯示為 1
-                            let displayDiff = diff;
+                            let action;
                             if (diff === 0) {
-                                displayDiff = 1;
+                                action = `<span style="background:#8b5cf6; color:white; padding:2px 8px; border-radius:12px; font-size:0.8rem; font-weight:600;">備註</span>`;
+                            } else if (isOut) {
+                                action = `<span class="badge-out">出庫</span>`;
+                            } else if (field === '素材') {
+                                action = `<span class="badge-in">入庫</span>`;
+                            } else {
+                                action = `<span style="background:#0284c7; color:white; padding:2px 8px; border-radius:12px; font-size:0.8rem; font-weight:600;">加工</span>`;
                             }
                             
+                            // 數量顯示處理
+                            let displayDiff = diff;
                             let diffText = '';
                             let diffColor = '#10b981'; // 綠色 (入庫)
-                            if (isOut) {
+                            if (diff === 0) {
+                                // 純備註，不顯示數量
+                                diffText = '-';
+                                diffColor = '#94a3b8';
+                            } else if (isOut) {
                                 diffColor = '#ef4444'; // 紅色 (出庫)
                                 diffText = displayDiff < 0 ? `${displayDiff}` : `-${displayDiff}`;
                             } else {
@@ -1483,7 +1492,18 @@
                                     <td>${h.user}</td>
                                 </tr>
                             `;
-                        }).join('');
+                        }).join('') + (isLoggedIn ? `
+                                <tr>
+                                    <td colspan="5" style="padding: 10px 0 0 0; border-top: 2px dashed #e2e8f0;">
+                                        <div style="display: inline-flex; flex-direction: column; gap: 10px; text-align: left; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e1; width: 100%; box-sizing: border-box; margin-top: 8px;">
+                                            <strong style="color: #334155; font-size: 0.9rem;">📝 繼續新增備註：</strong>
+                                            <input type="text" id="initialNoteInput" placeholder="請輸入工單、採購單號或註記..." style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem;" onkeydown="handleInitialNoteKey(event, '${itemId}', '${field}', '${modelName}')">
+                                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                                <button onclick="submitInitialNote('${itemId}', '${field}', '${modelName}')" style="padding: 6px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 0.85rem; transition: background 0.2s;">確認新增</button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>` : '');
                     })
                     .catch(err => {
                         tableBody.innerHTML = `<tr><td colspan="5" style="color: red; text-align: center; padding: 1rem;">載入失敗: ${err.message}</td></tr>`;

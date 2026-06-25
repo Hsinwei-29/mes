@@ -1459,12 +1459,6 @@
         
         // 設定 Mailto 連結
         document.getElementById('btnMailto').href = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        
-        // 設定網頁版 Gmail 連結
-        document.getElementById('btnGmailWeb').href = `https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=${encodeURIComponent(recipient)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        
-        // 設定網頁版 Outlook 連結
-        document.getElementById('btnOutlookWeb').href = `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(recipient)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     }
 
     function closeMailModal() {
@@ -1560,7 +1554,7 @@
         </div>
         <div class="modal-body" style="padding:1.5rem; background:#f8fafc;">
             <p style="margin-top:0; color:#475569; font-size:0.9rem; line-height:1.5; text-align: left;">
-               由於各電腦的預設郵件系統配置不同，我們為您提供多種發信管道。PDF 附件已為您自動下載，您可以一鍵複製內容手動貼上。
+               PDF 附件已為您自動下載，您可以一鍵啟動郵件軟體或複製內容手動貼上。
             </p>
             
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02); text-align: left;">
@@ -1583,19 +1577,6 @@
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 0.75rem; text-align: left;">
-                <div style="font-size: 0.8rem; font-weight: 700; color: #64748b;">⚡ 選擇您的發信管道：</div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <!-- Outlook Web -->
-                    <a id="btnOutlookWeb" target="_blank" class="btn" style="background:#0078d4; color:white; display:flex; align-items:center; justify-content:center; gap:0.5rem; padding:0.6rem; border-radius:8px; font-size:0.85rem; text-decoration:none; font-weight:600; cursor:pointer;">
-                        💻 網頁版 Outlook
-                    </a>
-                    <!-- Gmail Web -->
-                    <a id="btnGmailWeb" target="_blank" class="btn" style="background:#ea4335; color:white; display:flex; align-items:center; justify-content:center; gap:0.5rem; padding:0.6rem; border-radius:8px; font-size:0.85rem; text-decoration:none; font-weight:600; cursor:pointer;">
-                        🌐 網頁版 Gmail
-                    </a>
-                </div>
-                
                 <!-- Mailto Link -->
                 <a id="btnMailto" class="btn" style="background: linear-gradient(135deg, #4f46e5, #3b82f6); color:white; display:flex; align-items:center; justify-content:center; gap:0.5rem; padding:0.75rem; border-radius:8px; font-size:0.9rem; text-decoration:none; font-weight:600; text-align:center; cursor:pointer;">
                     📩 啟動預設郵件軟體 (mailto)
