@@ -360,12 +360,17 @@ def calculate_shortage():
         
         # 按生產開始日期升序（最早優先）、缺料數量降序、工單號碼升序排序
         # 注意：有些生產開始可能是 NaT/None，需要處理
+        _FAR_FUTURE = datetime(9999, 12, 31)
         def sort_key(x):
             date_val = x['生產開始']
-            # 確保日期空值排在最後
-            if not date_val or pd.isna(date_val): 
-                date_val = "9999-12-31"
-            return (date_val, -x['缺料數量'], x['工單號碼'])
+            # 統一轉換成 datetime，空值排在最後
+            try:
+                if date_val is None or (hasattr(date_val, '__class__') and pd.isna(date_val)):
+                    return (_FAR_FUTURE, -x['缺料數量'], x['工單號碼'])
+                dt = pd.Timestamp(date_val).to_pydatetime()
+                return (dt, -x['缺料數量'], x['工單號碼'])
+            except Exception:
+                return (_FAR_FUTURE, -x['缺料數量'], x['工單號碼'])
 
         shortage_list.sort(key=sort_key)
         

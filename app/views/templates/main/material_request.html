@@ -275,7 +275,7 @@
                 <div class="card" style="background:#f8f9ff; border: 1.5px dashed #c7d2fe; box-shadow:none;">
                     <div class="card-title" style="font-size:0.95rem; color:#4338ca; display:flex; justify-content:space-between; align-items:center;">
                         <span>➕ 新增允收交期</span>
-                        <button class="btn btn-primary btn-sm" style="font-size:0.8rem;" onclick="openShortagePicker('delivery')">📋 從缺料分析挑選</button>
+                        <button class="btn btn-primary btn-sm" style="font-size:0.8rem;" onclick="openShortagePicker('delivery')">📋 從工單需求挑選</button>
                     </div>
                     <div class="form-grid">
                         <div class="form-group">
@@ -417,7 +417,7 @@
                         </div>
                         <div class="form-group">
                             <label>交貨數 <span style="color:#dc2626">*</span></label>
-                            <input type="number" id="s-qty" min="1" placeholder="例：10">
+                            <input type="number" id="s-qty" min="1" placeholder="例：10" oninput="updateCastIdRows()">
                         </div>
                         <div class="form-group">
                             <label>工單號碼</label>
@@ -428,18 +428,7 @@
                             <input type="text" id="s-applicant" value="{{ current_user.chinese_name or current_user.username }}" readonly style="background:#f5f5f5;">
                         </div>
                         <div class="form-section-title">🆔 鑄件身分證 (選填)</div>
-                        <div class="form-group">
-                            <label>鑄件編碼</label>
-                            <input type="text" id="s-castId1" placeholder="例：爐號">
-                        </div>
-                        <div class="form-group">
-                            <label>銑工編碼</label>
-                            <input type="text" id="s-castId2" placeholder="例：序號">
-                        </div>
-                        <div class="form-group">
-                            <label>研磨編碼</label>
-                            <input type="text" id="s-castId3" placeholder="例：批號">
-                        </div>
+                        <div id="castIdRows" style="display:contents;"></div>
                     </div>
                     <div class="section-actions">
                         <button class="btn btn-success" onclick="addShippingRequest()">🚚 提交申請</button>
@@ -824,7 +813,7 @@
                 <td style="font-size:0.8rem;">${r.drawingNo || '-'}</td>
                 <td style="font-weight:700; color:#059669; font-size:1rem;">${r.qty || '-'}</td>
                 <td style="font-size:0.75rem; color:#555;">
-                    ${[r.castId1, r.castId2, r.castId3].filter(v => v).join('<br>') || '-'}
+                    ${getCastIdsDisplay(r)}
                 </td>
                 <td><span class="status-tag ${r.status === '已核准' ? 'status-approved' : 'status-pending'}" style="font-size:0.75rem; padding:2px 6px;">${r.status || '簽核'}</span></td>
                 <td>
@@ -839,6 +828,60 @@
         `}).join('');
     }
 
+    // ===== 動態鑄件身分證行 =====
+    function updateCastIdRows() {
+        const qty = parseInt(document.getElementById('s-qty').value) || 1;
+        const count = Math.min(Math.max(qty, 1), 50); // 最多 50 筆
+        const container = document.getElementById('castIdRows');
+        if (!container) return;
+
+        // 保留已填內容
+        const existing = [];
+        container.querySelectorAll('.cast-id-group').forEach(g => {
+            existing.push({
+                c1: g.querySelector('.ci-cast')?.value || '',
+                c2: g.querySelector('.ci-mill')?.value || '',
+                c3: g.querySelector('.ci-grind')?.value || ''
+            });
+        });
+
+        container.innerHTML = '';
+        for (let i = 0; i < count; i++) {
+            const prev = existing[i] || {};
+            const label = count > 1 ? ` (${i + 1}/${count})` : '';
+            const div = document.createElement('div');
+            div.className = 'cast-id-group';
+            div.style.cssText = 'display:contents;';
+            div.innerHTML = `
+                <div class="form-group" style="grid-column:1/-1; background:#f0fdf4; border-radius:8px; padding:0.6rem 1rem; margin-top:${i===0?'0':'0.25rem'};">
+                    <div style="font-size:0.8rem;font-weight:700;color:#15803d;margin-bottom:0.5rem;">📦 第 ${i+1} 件${label}</div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;">
+                        <div>
+                            <label style="font-size:0.8rem;font-weight:600;color:#555;">鑄件編碼</label>
+                            <input type="text" class="ci-cast" placeholder="例：爐號"
+                                style="width:100%;padding:0.45rem 0.65rem;border:1.5px solid #d1d5db;border-radius:6px;font-size:0.9rem;font-family:inherit;"
+                                value="${prev.c1 || ''}">
+                        </div>
+                        <div>
+                            <label style="font-size:0.8rem;font-weight:600;color:#555;">銑工編碼</label>
+                            <input type="text" class="ci-mill" placeholder="例：序號"
+                                style="width:100%;padding:0.45rem 0.65rem;border:1.5px solid #d1d5db;border-radius:6px;font-size:0.9rem;font-family:inherit;"
+                                value="${prev.c2 || ''}">
+                        </div>
+                        <div>
+                            <label style="font-size:0.8rem;font-weight:600;color:#555;">研磨編碼</label>
+                            <input type="text" class="ci-grind" placeholder="例：批號"
+                                style="width:100%;padding:0.45rem 0.65rem;border:1.5px solid #d1d5db;border-radius:6px;font-size:0.9rem;font-family:inherit;"
+                                value="${prev.c3 || ''}">
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+    }
+
+
     async function addShippingRequest() {
         const factory = document.getElementById('s-factory').value;
         const vendorNo = document.getElementById('s-vendorNo').value.trim();
@@ -851,9 +894,20 @@
         const qty = document.getElementById('s-qty').value;
         const workOrder = document.getElementById('s-workOrder').value.trim();
         const applicant = document.getElementById('s-applicant').value;
-        const castId1 = document.getElementById('s-castId1').value.trim();
-        const castId2 = document.getElementById('s-castId2').value.trim();
-        const castId3 = document.getElementById('s-castId3').value.trim();
+
+        // 收集多組身分證
+        const castIds = [];
+        document.querySelectorAll('#castIdRows .cast-id-group').forEach(g => {
+            castIds.push({
+                castId1: g.querySelector('.ci-cast')?.value.trim() || '',
+                castId2: g.querySelector('.ci-mill')?.value.trim() || '',
+                castId3: g.querySelector('.ci-grind')?.value.trim() || ''
+            });
+        });
+        // 向後相容：保留舊欄位（第一筆）
+        const castId1 = castIds[0]?.castId1 || '';
+        const castId2 = castIds[0]?.castId2 || '';
+        const castId3 = castIds[0]?.castId3 || '';
 
         if (!vendorNo || !vendorName || !shipDate || !poNo || !partNo || !qty) {
             showToast('請填寫所有必填欄位 (包含採購單號)', 'error');
@@ -861,8 +915,8 @@
         }
 
         const record = {
-            factory, vendorNo, vendorName, shipDate, poNo, partNo, partName, drawingNo, qty, 
-            workOrder, applicant, castId1, castId2, castId3,
+            factory, vendorNo, vendorName, shipDate, poNo, partNo, partName, drawingNo, qty,
+            workOrder, applicant, castId1, castId2, castId3, castIds,
             createdAt: new Date().toLocaleString('zh-TW')
         };
         
@@ -874,17 +928,32 @@
         if (res.success) {
             shippingRecords.push(res.data);
             renderShipping();
-            ['s-factory','s-poNo','s-partNo','s-partName','s-drawingNo','s-qty','s-workOrder','s-castId1','s-castId2','s-castId3']
+            ['s-factory','s-poNo','s-partNo','s-partName','s-drawingNo','s-qty','s-workOrder']
                 .forEach(id => {
                     const el = document.getElementById(id);
                     if (el && el.tagName === 'SELECT' && id === 's-factory') el.value = '本廠';
                     else if (el) el.value = '';
                 });
+            updateCastIdRows(); // 重置身分證表單
             showToast('🚚 出貨申請已提交');
             switchTab('shipping');
         } else {
             showToast('提交失敗', 'error');
         }
+    }
+
+    // 身分證顯示輔助函數 (支援舊格式和新格式)
+    function getCastIdsDisplay(r) {
+        // 新格式: castIds 陣列
+        if (r.castIds && r.castIds.length > 0) {
+            return r.castIds.map((ci, i) => {
+                const parts = [ci.castId1, ci.castId2, ci.castId3].filter(v => v);
+                if (!parts.length) return '';
+                return (r.castIds.length > 1 ? `<span style="color:#888;font-size:0.7rem;">#${i+1}</span> ` : '') + parts.join(' / ');
+            }).filter(v => v).join('<br>') || '-';
+        }
+        // 舊格式: castId1/2/3
+        return [r.castId1, r.castId2, r.castId3].filter(v => v).join(' / ') || '-';
     }
 
     async function deleteShippingRecord(id) {
@@ -908,11 +977,9 @@
             
             const modalTitle = document.querySelector('#pickerModal h3');
             if (modalTitle) {
-                if (target === 'delivery') {
-                    modalTitle.innerHTML = '📋 從缺料分析挑選項目';
-                } else {
-                    modalTitle.innerHTML = '📋 從所有系統工單挑選鑄件出貨項目';
-                }
+                modalTitle.innerHTML = target === 'delivery'
+                    ? '📋 從工單需求挑選項目'
+                    : '📋 從所有系統工單挑選鑄件出貨項目';
             }
 
             const modal = document.getElementById('pickerModal');
@@ -929,74 +996,55 @@
             }
 
             try {
-                // 1. 載入缺料分析資料
-                const resShortage = await fetch('/api/shortage');
-                const dataShortage = await resShortage.json();
-                let baseShortageList = [];
-                if (dataShortage.success) {
-                    baseShortageList = dataShortage.data;
-                }
+                // 共用：從工單對應表展開鑄件品號（delivery / shipping 均使用此邏輯）
+                const resCastingMap = await fetch('/api/orders/casting-map');
+                const dataCastingMap = await resCastingMap.json();
+                const castingMap = dataCastingMap.success ? dataCastingMap.data : {};
 
-                if (target === 'delivery') {
-                    // 允收交期：只挑選目前狀態為「缺料」的鑄件
-                    shortageData = baseShortageList.filter(item => item.狀態 === '缺料');
-                    renderPickerList(shortageData);
-                } else {
-                    // 出貨單申請：以「底座、工作台、橫樑、立柱」開立，品號從工單對應表查詢
-                    
-                    // 1.1 載入準確的工單 → 品號對應表（後端從缺料分析直接查詢，精確至工單號碼）
-                    const resCastingMap = await fetch('/api/orders/casting-map');
-                    const dataCastingMap = await resCastingMap.json();
-                    const castingMap = dataCastingMap.success ? dataCastingMap.data : {};
+                const resOrders = await fetch('/api/orders');
+                const dataOrders = await resOrders.json();
 
-                    // 1.2 載入所有系統工單
-                    const resOrders = await fetch('/api/orders');
-                    const dataOrders = await resOrders.json();
-                    
-                    if (dataOrders.orders) {
-                        const castingTypes = ['底座', '工作台', '橫樑', '立柱'];
-                        const expandedList = [];
-                        
-                        dataOrders.orders.forEach(o => {
-                            const machineModel = o.品號說明 || '';
-                            const workOrder = o.工單 || '';
-                            const woPartsMap = castingMap[workOrder] || {};
-                            
-                            castingTypes.forEach(partType => {
-                                // 精確從工單號碼查詢對應品號（最準確，支援同類型有多個零件如主副底座）
-                                const matches = woPartsMap[partType];
-                                if (matches && matches.length > 0) {
-                                    matches.forEach(match => {
-                                        expandedList.push({
-                                            零件類型: partType,
-                                            品號: match.品號 || '',
-                                            物料說明: match.物料說明 || `${partType}加工品 (${machineModel})`,
-                                            需求數量: 1,
-                                            已領料: 0,
-                                            缺料數量: 1,
-                                            工單號碼: workOrder,
-                                            機型: machineModel
-                                        });
-                                    });
-                                } else {
-                                    // 預設無對應品號時新增一筆空白品號項目
+                if (dataOrders.orders) {
+                    const castingTypes = ['底座', '工作台', '橫樑', '立柱'];
+                    const expandedList = [];
+
+                    dataOrders.orders.forEach(o => {
+                        const machineModel = o.品號說明 || '';
+                        const workOrder = o.工單 || '';
+                        const woPartsMap = castingMap[workOrder] || {};
+
+                        castingTypes.forEach(partType => {
+                            const matches = woPartsMap[partType];
+                            if (matches && matches.length > 0) {
+                                matches.forEach(match => {
                                     expandedList.push({
                                         零件類型: partType,
-                                        品號: '',
-                                        物料說明: `${partType}加工品 (${machineModel})`,
+                                        品號: match.品號 || '',
+                                        物料說明: match.物料說明 || `${partType}加工品 (${machineModel})`,
                                         需求數量: 1,
                                         已領料: 0,
                                         缺料數量: 1,
                                         工單號碼: workOrder,
                                         機型: machineModel
                                     });
-                                }
-                            });
+                                });
+                            } else {
+                                expandedList.push({
+                                    零件類型: partType,
+                                    品號: '',
+                                    物料說明: `${partType}加工品 (${machineModel})`,
+                                    需求數量: 1,
+                                    已領料: 0,
+                                    缺料數量: 1,
+                                    工單號碼: workOrder,
+                                    機型: machineModel
+                                });
+                            }
                         });
-                        
-                        shortageData = expandedList;
-                        renderPickerList(shortageData);
-                    }
+                    });
+
+                    shortageData = expandedList;
+                    renderPickerList(shortageData);
                 }
             } catch (err) {
                 console.error(err);
@@ -1046,13 +1094,14 @@
 
     function selectShortageItem(workOrder, partNo, partDesc, partType, shortageQty, demandQty, pickedQty, machineModel) {
         if (currentPickerTarget === 'delivery') {
+            const remainingQty = Math.max(0, parseInt(demandQty) - parseInt(pickedQty));
             document.getElementById('d-partType').value = partType;
             document.getElementById('d-partNo').value = partNo;
             document.getElementById('d-partDesc').value = partDesc;
-            document.getElementById('d-quantity').value = Math.abs(shortageQty) || 1;
+            document.getElementById('d-quantity').value = remainingQty || 1;
             document.getElementById('d-remark').value = workOrder || '';
             switchTab('delivery');
-            showToast('已帶入缺料與機號資料');
+            showToast('✅ 已帶入工單需求資料');
         } else {
             const remainingQty = Math.max(0, parseInt(demandQty) - parseInt(pickedQty));
             document.getElementById('s-partNo').value = partNo;
@@ -1132,6 +1181,20 @@
         });
     }
 
+    // PDF 身分證 HTML 引注式輸出
+    function getCastIdsHtmlRows(r) {
+        if (r.castIds && r.castIds.length > 0) {
+            const items = r.castIds.map((ci, i) => {
+                const parts = [ci.castId1, ci.castId2, ci.castId3].filter(v => v);
+                if (!parts.length) return '';
+                const prefix = r.castIds.length > 1 ? `<span style="color:#666;">#${i+1}</span> ` : '';
+                return prefix + parts.join(' / ');
+            }).filter(v => v);
+            return items.length ? items.join('<br>') : '-';
+        }
+        return [r.castId1, r.castId2, r.castId3].filter(v => v).join(' / ') || '-';
+    }
+
     async function downloadShippingPDF(r) {
         const sigs = r.signatures || {};
         const signImg = sigs['下流程簽收'] ? `<img src="${sigs['下流程簽收'].img}" style="max-height:60px;">` : '<span style="color:#ccc;">尚未簽核</span>';
@@ -1157,7 +1220,7 @@
                 <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;">品名</th><td colspan="3" style="border:1px solid #333;padding:10px;">${r.partName || '-'}</td></tr>
                 <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;">圖號版本</th><td style="border:1px solid #333;padding:10px;">${r.drawingNo || '-'}</td>
                     <th style="border:1px solid #333;padding:10px;background:#f8fafc;">交貨數量</th><td style="border:1px solid #333;padding:10px;font-weight:bold;font-size:1.2em;color:#d946ef;">${r.qty}</td></tr>
-                <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;">鑄件身分證</th><td colspan="3" style="border:1px solid #333;padding:10px;font-family:monospace;">${[r.castId1,r.castId2,r.castId3].filter(v=>v).join(' / ')||'-'}</td></tr>
+                <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;">鑄件身分證</th><td colspan="3" style="border:1px solid #333;padding:10px;font-family:monospace;">${getCastIdsHtmlRows(r)}</td></tr>
                 <tr><th style="border:1px solid #333;padding:10px;background:#f8fafc;">備註</th><td colspan="3" style="border:1px solid #333;padding:10px;min-height:40px;">-</td></tr>
             </table>
             <div style="display:flex;justify-content:flex-end;margin-top:16px;">
@@ -1238,7 +1301,7 @@
         <tr><th>品號</th><td colspan="3"><strong style="font-size: 1.1em;">${r.partNo}</strong></td></tr>
         <tr><th>品名</th><td colspan="3">${r.partName || '-'}</td></tr>
         <tr><th>圖號版本</th><td>${r.drawingNo || '-'}</td><th>交貨數量</th><td><strong style="font-size: 1.2em; color: #d946ef;">${r.qty}</strong></td></tr>
-        <tr><th>鑄件身分證</th><td colspan="3" style="font-family: monospace; font-size: 0.9em;">${[r.castId1, r.castId2, r.castId3].filter(v => v).join(' / ') || '-'}</td></tr>
+        <tr><th>鑄件身分證</th><td colspan="3" style="font-family: monospace; font-size: 0.9em;">${getCastIdsHtmlRows(r)}</td></tr>
         <tr><th>備註</th><td colspan="3" style="min-height: 40px;">-</td></tr>
     </table>
 
@@ -1269,6 +1332,8 @@
 
     // ===== 初始化 =====
     document.addEventListener('DOMContentLoaded', async () => {
+        // 初始化鑄件身分證表單 (預設 1 組)
+        updateCastIdRows();
         // 先載入伺服器資料
         await loadDeliveryRecords();
         await loadShippingRecords();
@@ -1422,7 +1487,11 @@
                     img: img,
                     time: new Date().toLocaleString()
                 };
-                if (currentSignRole === '下流程簽收') r.status = '已核准';
+                if (currentSignRole === '下流程簽收') {
+                    r.status = '已核准';
+                    // 自動刪除允收交期中品號相同的紀錄
+                    await autoDeleteDeliveryByPartNo(r.partNo);
+                }
             }
             renderFlowSteps(r);
             renderShipping();
@@ -1431,6 +1500,18 @@
         } else {
             showToast('簽核失敗', 'error');
         }
+    }
+
+    // 出貨單核准後，從畫面隱藏允收交期中相同品號的紀錄（後台資料保留）
+    async function autoDeleteDeliveryByPartNo(partNo) {
+        if (!partNo) return;
+        const matched = deliveryRecords.filter(d => d.partNo === partNo);
+        if (matched.length === 0) return;
+
+        // 僅從前端清單移除，不呼叫刪除 API，後台資料庫資料保留
+        deliveryRecords = deliveryRecords.filter(d => d.partNo !== partNo);
+        renderDelivery();
+        showToast(`🗑️ 已從允收交期移除 ${matched.length} 筆（品號：${partNo}）`);
     }
 
     // ===== 郵件寄送小助手 =====
