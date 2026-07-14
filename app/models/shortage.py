@@ -16,6 +16,45 @@ SHORTAGE_CACHE = {
     'data': None
 }
 
+# 未加工機型清單快取
+_UNPROCESSED_CACHE = {
+    'mtime': 0,
+    'data': {}  # {零件類型: set(機型名稱)}
+}
+
+def load_unprocessed_models():
+    """從 未加工機型.xlsx 載入各零件類型的未加工機型清單
+    
+    Returns:
+        dict: {零件類型: set(機型名稱)}，例如 {'底座': {'LG-500', 'MVP-11', ...}, '立柱': {...}}
+    """
+    global _UNPROCESSED_CACHE
+    excel_path = os.path.join(os.getcwd(), '未加工機型.xlsx')
+    if not os.path.exists(excel_path):
+        return {}
+    try:
+        mtime = os.path.getmtime(excel_path)
+        if _UNPROCESSED_CACHE['mtime'] == mtime and _UNPROCESSED_CACHE['data']:
+            return _UNPROCESSED_CACHE['data']
+        
+        result = {}
+        xls = pd.ExcelFile(excel_path, engine='openpyxl')
+        for sheet_name in xls.sheet_names:
+            df = xls.parse(sheet_name)
+            if df.empty or '機型' not in df.columns:
+                continue
+            models = set(str(v).strip() for v in df['機型'].dropna() if str(v).strip())
+            if models:
+                result[sheet_name.strip()] = models
+        
+        _UNPROCESSED_CACHE['mtime'] = mtime
+        _UNPROCESSED_CACHE['data'] = result
+        print(f"[未加工機型] 載入完成: {', '.join(f'{k}({len(v)}筆)' for k, v in result.items())}")
+        return result
+    except Exception as e:
+        print(f"[未加工機型] 載入失敗: {e}")
+        return {}
+
 def is_casting_part(part_description):
     """判斷物料說明是否為鑄件零件
     
@@ -226,12 +265,15 @@ def calculate_shortage():
         # 確保撥料資料已載入 (這會觸發 API 抓取並更新 PICKING_CACHE['mtime'])
         get_picking_data()
         
-        current_mtimes = (0, 0, 0)
+        current_mtimes = (0, 0, 0, 0)
         try:
+            unprocessed_excel = os.path.join(os.getcwd(), '未加工機型.xlsx')
+            unprocessed_mtime = os.path.getmtime(unprocessed_excel) if os.path.exists(unprocessed_excel) else 0
             current_mtimes = (
                 os.path.getmtime(casting_file),
                 os.path.getmtime(workorder_file),
-                PICKING_CACHE['mtime']  # 使用 API 抓取時間標記
+                PICKING_CACHE['mtime'],  # 使用 API 抓取時間標記
+                unprocessed_mtime        # 未加工機型 Excel 修改時間
             )
 
             
@@ -279,6 +321,9 @@ def calculate_shortage():
                     shortage_overrides = json.load(f)
             except Exception as e:
                 print(f"Error loading shortage_overrides: {e}")
+
+        # 載入未加工機型清單（用於標記）
+        unprocessed_models = load_unprocessed_models()
 
         # 3. 計算缺料
         shortage_list = []
@@ -337,6 +382,17 @@ def calculate_shortage():
                     else:
                         status = '已領足' if picked_qty >= demand_qty else ('庫存足' if final_shortage <= 0 else '缺料')
 
+                    # 判斷是否為未加工機型
+                    item_model = casting_inventory[part_number].get('機型', '') if part_number in casting_inventory else ''
+                    is_unprocessed = False
+                    if unprocessed_models and item_model:
+                        part_type_unprocessed = unprocessed_models.get(part_type, set())
+                        # 支援機型欄位含逗號（多機型）的情況
+                        for m in [x.strip() for x in item_model.split(',')]:
+                            if m in part_type_unprocessed:
+                                is_unprocessed = True
+                                break
+
                     shortage_list.append({
                         '工單號碼': wo_number,
                         '工單編碼': work_order_code,
@@ -344,7 +400,7 @@ def calculate_shortage():
                         '生產開始': start_date,
                         '生產結束': end_date,
                         '品號': part_number,
-                        '機型': casting_inventory[part_number].get('機型', '') if part_number in casting_inventory else '',
+                        '機型': item_model,
                         '物料說明': part_desc,
                         '零件類型': part_type,
                         '需求數量': demand_qty,
@@ -355,7 +411,8 @@ def calculate_shortage():
                         '現有素材': current_material,  # 素材數量，用於判斷是否為嚴重缺料
                         '缺料數量': final_shortage if final_shortage > 0 else 0,
                         '特規備註': special_note,
-                        '狀態': status
+                        '狀態': status,
+                        '未加工': is_unprocessed
                     })
         
         # 按生產開始日期升序（最早優先）、缺料數量降序、工單號碼升序排序

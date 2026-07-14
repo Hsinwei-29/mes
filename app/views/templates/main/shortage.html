@@ -297,6 +297,17 @@
                     <label>搜尋：</label>
                     <input type="text" id="searchInput" placeholder="工單號碼、客戶、品號...">
                 </div>
+                <div class="filter-group" style="margin-left: auto;">
+                    <label for="hideUnprocessedToggle" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; user-select: none;">
+                        <div style="position: relative; display: inline-block; width: 44px; height: 24px;">
+                            <input type="checkbox" id="hideUnprocessedToggle" checked style="opacity: 0; width: 0; height: 0; position: absolute;">
+                            <span id="toggleTrack" style="position: absolute; inset: 0; background: #667eea; border-radius: 24px; transition: background 0.3s;">
+                                <span id="toggleThumb" style="position: absolute; left: 20px; top: 2px; width: 20px; height: 20px; background: white; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: left 0.3s;"></span>
+                            </span>
+                        </div>
+                        <span style="font-weight: 600; color: #667eea; font-size: 0.9rem;">🚫 隱藏未加工機型</span>
+                    </label>
+                </div>
                 <button class="export-btn" onclick="exportToExcel()">📥 匯出 Excel</button>
             </div>
 
@@ -360,8 +371,9 @@
                         return b.缺料數量 - a.缺料數量;
                     });
 
-                    updateStats(result.stats);
-                    // 初始載入時直接套用篩選 (預設已選中小於0的)
+                    // 更新庫存總覽卡片（固定，不受未加工篩選影響）
+                    updateInventorySummary(result.stats);
+                    // 初始載入時直接套用篩選，統計卡片也會一併更新
                     filterData();
                     document.getElementById('lastUpdate').textContent = `更新時間: ${result.timestamp}`;
                 } else {
@@ -372,19 +384,24 @@
             }
         }
 
-        // 更新統計卡片
-        function updateStats(stats) {
-            document.getElementById('totalRecords').textContent = stats.total_records;
-            document.getElementById('shortageCount').textContent = stats.shortage_count;
-            document.getElementById('sufficientCount').textContent = stats.sufficient_count;
-
-            // 更新庫存總覽
+        // 更新庫存總覽（只更新鑄件庫存卡片，不受未加工篩選影響）
+        function updateInventorySummary(stats) {
             if (stats.inventory_summary) {
                 document.getElementById('stockWorktable').textContent = stats.inventory_summary['工作台'] || 0;
                 document.getElementById('stockBase').textContent = stats.inventory_summary['底座'] || 0;
                 document.getElementById('stockCrossbeam').textContent = stats.inventory_summary['橫樑'] || 0;
                 document.getElementById('stockColumn').textContent = stats.inventory_summary['立柱'] || 0;
             }
+        }
+
+        // 根據當前顯示資料重新計算統計卡片（扣除未加工需求）
+        function recalcStats(visibleData) {
+            const total    = visibleData.length;
+            const shortage = visibleData.filter(i => i.缺料數量 > 0).length;
+            const sufficient = total - shortage;
+            document.getElementById('totalRecords').textContent   = total;
+            document.getElementById('shortageCount').textContent  = shortage;
+            document.getElementById('sufficientCount').textContent = sufficient;
         }
 
         // 渲染表格
@@ -397,12 +414,15 @@
             }
 
             tbody.innerHTML = data.map(item => `
-                <tr>
+                <tr${item.未加工 ? ' style="opacity: 0.55; background: #fffbeb;"' : ''}>
                     <td>${item.工單號碼}</td>
                     <td>${item.客戶名稱}</td>
                     <td>${formatDate(item.生產開始)}</td>
                     <td>${formatDate(item.生產結束)}</td>
-                    <td style="font-weight: 600; color: #1e40af;">${item.機型 || '-'}</td>
+                    <td style="font-weight: 600; color: #1e40af;">
+                        ${item.機型 || '-'}
+                        ${item.未加工 ? '<span style="margin-left:4px; font-size:0.72rem; background:#f59e0b; color:white; padding:1px 6px; border-radius:10px; font-weight:500; vertical-align:middle;">未加工</span>' : ''}
+                    </td>
                     <td><code>${item.品號}</code></td>
                     <td>${item.物料說明}</td>
                     <td>${item.零件類型}</td>
@@ -432,8 +452,17 @@
             const partType = document.getElementById('filterPartType').value;
             const status = document.getElementById('filterStatus').value;
             const search = document.getElementById('searchInput').value.toLowerCase();
+            const hideUnprocessed = document.getElementById('hideUnprocessedToggle').checked;
 
             let filtered = allData;
+
+            // 先依「未加工」篩選（影響統計卡片基數）
+            if (hideUnprocessed) {
+                filtered = filtered.filter(item => !item.未加工);
+            }
+
+            // 統計卡片只看「隱藏未加工後」的全部資料（不受其他篩選器影響）
+            recalcStats(filtered);
 
             if (partType) {
                 filtered = filtered.filter(item => item.零件類型 === partType);
@@ -471,6 +500,22 @@
         document.getElementById('filterPartType').addEventListener('change', filterData);
         document.getElementById('filterStatus').addEventListener('change', filterData);
         document.getElementById('searchInput').addEventListener('input', filterData);
+
+        // 「隱藏未加工機型」Toggle 視覺同步
+        const toggleEl = document.getElementById('hideUnprocessedToggle');
+        const trackEl  = document.getElementById('toggleTrack');
+        const thumbEl  = document.getElementById('toggleThumb');
+        function syncToggleUI() {
+            if (toggleEl.checked) {
+                trackEl.style.background = '#667eea';
+                thumbEl.style.left = '20px';
+            } else {
+                trackEl.style.background = '#ccc';
+                thumbEl.style.left = '2px';
+            }
+        }
+        toggleEl.addEventListener('change', () => { syncToggleUI(); filterData(); });
+        syncToggleUI();
 
         // 檢查 URL 參數並設定篩選器
         const urlParams = new URLSearchParams(window.location.search);

@@ -28,13 +28,17 @@ def calculate_supply_demand():
     # 紀錄某大類是否存在「嚴重缺料」 (即該零件缺料且全無素材可下料)
     hard_shortage = {'工作台': False, '底座': False, '橫樑': False, '立柱': False}
     
-    # 計算各鑄件的缺料數量
+    # 計算各鑄件的缺料數量（排除未加工機型）
     demand = {'工作台': 0, '底座': 0, '橫樑': 0, '立柱': 0}
     for item in shortage_list:
         part_type = item.get('零件類型', '')
         shortage_qty = item.get('缺料數量', 0)
         material_qty = item.get('現有素材', 0)  # 素材數量
-        
+        is_unprocessed = item.get('未加工', False)  # 未加工機型跳過
+
+        if is_unprocessed:
+            continue
+
         if part_type in demand and shortage_qty > 0:
             demand[part_type] += shortage_qty
             # 完全沒有素材才算嚴重缺料（有素材表示還可加工，不算不足）
