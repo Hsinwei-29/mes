@@ -2186,26 +2186,129 @@
                 const diff = newVal - oldVal;
                 const changeType = diff > 0 ? 'increase' : diff < 0 ? 'decrease' : '';
                 const arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '→';
+                const encodedPart = encodeURIComponent(partName);
 
                 return `
-                    <div class="timeline-item ${changeType}">
+                    <div class="timeline-item ${changeType}"
+                         data-part="${encodedPart}"
+                         data-item="${h.item_id}"
+                         data-time="${h.timestamp}"
+                         data-field="${h.field}"
+                         data-qty="${newVal}"
+                         data-model="${h.model_name || ''}">
                         <div class="timeline-time">${h.timestamp}</div>
                         <div class="timeline-content">
                             <div class="timeline-field">${h.field}</div>
-                            ${h.note ? `<div class="timeline-note" style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem;">📝 ${h.note}</div>` : ''}
+                            <div class="timeline-note-area">
+                                ${h.note ? `<div class="timeline-note" style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem;">📝 ${h.note}</div>` : ''}
+                            </div>
                             <div class="timeline-change">
                                 <span class="timeline-old">${oldVal}</span>
                                 <span>${arrow}</span>
-                                <span class="timeline-new">${newVal}</span>
+                                <span class="timeline-new-val">${newVal}</span>
                                 <span style="color: var(--text-muted);">(${diff > 0 ? '+' : ''}${diff})</span>
                             </div>
-                            <div class="timeline-user">👤 ${h.user}</div>
+                            <div class="timeline-user">👤 ${h.user}
+                                ${isAdmin ? `<button onclick="startEditTimeline(this)" title="編輯數量與備註"
+                                    style="margin-left:8px; background:none; border:1px solid #d1d5db; border-radius:4px; padding:1px 6px; cursor:pointer; font-size:0.8rem;">✏️ 編輯</button>` : ''}
+                            </div>
                         </div>
                     </div>
                 `;
             }).join('');
 
             timeline.innerHTML = items;
+        }
+
+        // ─── 製程轉換履歷 inline 編輯 ───
+        function startEditTimeline(btn) {
+            const item = btn.closest('.timeline-item');
+            if (!item) return;
+
+            const currentQty = parseInt(item.getAttribute('data-qty') || '0');
+            const noteDiv = item.querySelector('.timeline-note');
+            const currentNote = noteDiv ? noteDiv.textContent.replace('📝 ', '').trim() : '';
+            const noteArea = item.querySelector('.timeline-note-area');
+
+            // 避免重複展開
+            if (item.querySelector('.tl-inline-form')) return;
+
+            // 插入 inline 表單
+            const form = document.createElement('div');
+            form.className = 'tl-inline-form';
+            form.style.cssText = 'margin-top:8px; display:flex; flex-direction:column; gap:6px; padding:8px; background:#f0f9ff; border:1.5px solid #38bdf8; border-radius:8px;';
+            form.innerHTML = `
+                <label style="font-size:0.78rem; font-weight:600; color:#0369a1;">🔢 數量（修改後同步 Excel）</label>
+                <input type="number" class="tl-qty-input" value="${currentQty}" min="0"
+                    style="padding:4px 8px; border:1px solid #bae6fd; border-radius:6px; font-size:0.9rem; width:110px;">
+                <label style="font-size:0.78rem; font-weight:600; color:#0369a1;">📝 備註</label>
+                <input type="text" class="tl-note-input" value="${currentNote}"
+                    style="padding:4px 8px; border:1px solid #bae6fd; border-radius:6px; font-size:0.9rem;">
+                <div style="display:flex; gap:6px; justify-content:flex-end;">
+                    <button class="tl-save-btn" style="padding:4px 14px; background:#0284c7; color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.85rem; font-weight:600;">💾 儲存</button>
+                    <button class="tl-cancel-btn" style="padding:4px 10px; background:#e5e7eb; color:#374151; border:none; border-radius:6px; cursor:pointer; font-size:0.85rem;">取消</button>
+                </div>
+            `;
+
+            item.querySelector('.timeline-content').appendChild(form);
+
+            form.querySelector('.tl-save-btn').addEventListener('click', () => saveTimelineRecord(item, form));
+            form.querySelector('.tl-cancel-btn').addEventListener('click', () => form.remove());
+            form.addEventListener('keydown', e => {
+                if (e.key === 'Enter') saveTimelineRecord(item, form);
+                if (e.key === 'Escape') form.remove();
+            });
+            form.querySelector('.tl-qty-input').focus();
+        }
+
+        async function saveTimelineRecord(item, form) {
+            const part = decodeURIComponent(item.getAttribute('data-part') || partName);
+            const itemId = item.getAttribute('data-item');
+            const timestamp = item.getAttribute('data-time');
+            const field = item.getAttribute('data-field');
+            const modelName = item.getAttribute('data-model') || '';
+            const newQty = parseInt(form.querySelector('.tl-qty-input').value);
+            const newNote = form.querySelector('.tl-note-input').value;
+
+            const saveBtn = form.querySelector('.tl-save-btn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = '儲存中...';
+
+            try {
+                const res = await fetch('/api/inventory/history/update-qty', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ part, item_id: itemId, timestamp, field, new_note: newNote, new_qty: newQty, model_name: modelName })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    form.remove();
+                    // 更新顯示
+                    item.setAttribute('data-qty', newQty);
+                    const qtySpan = item.querySelector('.timeline-new-val');
+                    if (qtySpan) qtySpan.textContent = newQty;
+                    const noteArea = item.querySelector('.timeline-note-area');
+                    if (noteArea) {
+                        noteArea.innerHTML = newNote
+                            ? `<div class="timeline-note" style="font-size:0.85rem;color:#666;margin-bottom:0.25rem;">📝 ${newNote}</div>`
+                            : '';
+                    }
+                    // toast
+                    const toast = document.createElement('div');
+                    toast.textContent = '✅ 已儲存';
+                    toast.style.cssText = 'position:fixed;bottom:2rem;right:2rem;background:#059669;color:white;padding:0.6rem 1.2rem;border-radius:8px;font-weight:600;z-index:99999;';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 2500);
+                } else {
+                    alert('❌ 儲存失敗：' + (data.error || '未知錯誤'));
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = '💾 儲存';
+                }
+            } catch (err) {
+                alert('❌ 連線失敗：' + err.message);
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 儲存';
+            }
         }
 
         // 點擊背景關閉彈出視窗
