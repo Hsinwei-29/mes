@@ -1580,52 +1580,61 @@
             const field = row.getAttribute('data-field');
             const modelName = row.getAttribute('data-model') || '';
 
-            const newNote = form.querySelector('.inline-note-input')?.value ?? null;
+            const newNote = form.querySelector('.inline-note-input')?.value ?? '';
             const qtyInput = form.querySelector('.inline-qty-input');
             const newQty = (!isDiff0 && qtyInput) ? parseInt(qtyInput.value) : null;
+            const oldQty = parseInt(row.getAttribute('data-qty') || '0');
+            const qtyChanged = newQty !== null && newQty !== oldQty;
 
             const saveBtn = form.querySelector('.inline-save-btn');
             saveBtn.disabled = true;
             saveBtn.textContent = '儲存中...';
 
             try {
-                const res = await fetch('/api/inventory/history/update-qty', {
+                // Step 1: 更新備註（使用現有 API）
+                const noteRes = await fetch('/api/inventory/history/update', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ part, item_id: itemId, timestamp, field, new_note: newNote, new_qty: newQty, model_name: modelName })
+                    body: JSON.stringify({ part, item_id: itemId, timestamp, field, new_note: newNote })
                 });
-                const data = await res.json();
-                if (data.success) {
-                    // 更新畫面
-                    form.remove();
-                    noteWrapper.style.display = '';
-                    noteWrapper.querySelector('.note-text').textContent = newNote || '-';
-                    if (!isDiff0 && qtyInput && newQty !== null) {
-                        const qtyCell = row.querySelector('.qty-cell');
-                        if (qtyCell) {
-                            const oldQty = parseInt(row.getAttribute('data-qty') || '0');
-                            const oldOldQty = oldQty - (parseInt(row.getAttribute('data-qty') || '0'));
-                            // 重新計算 diff 顯示 (new - old_value)
-                            // 最簡單：直接顯示 +newQty（假設 old_value 不變）
-                            const prevDiff = newQty - (parseInt(row.getAttribute('data-qty') || '0') - (parseInt(row.getAttribute('data-qty') || '0') - parseInt(row.getAttribute('data-qty') || '0')));
-                            // 更新 row 的 data-qty
-                            row.setAttribute('data-qty', newQty);
-                            qtyCell.textContent = newQty > 0 ? `+${newQty}` : `${newQty}`;
-                        }
-                    }
-                    // 成功提示
-                    const toast = document.createElement('div');
-                    toast.textContent = '✅ 已儲存';
-                    toast.style.cssText = 'position:fixed;bottom:2rem;right:2rem;background:#059669;color:white;padding:0.6rem 1.2rem;border-radius:8px;font-weight:600;z-index:99999;';
-                    document.body.appendChild(toast);
-                    setTimeout(() => toast.remove(), 2500);
-                } else {
-                    alert('❌ 儲存失敗：' + (data.error || '未知錯誤'));
-                    saveBtn.disabled = false;
-                    saveBtn.textContent = '💾 儲存';
+                const noteData = await noteRes.json();
+                if (!noteData.success) {
+                    throw new Error(noteData.error || '備註更新失敗');
                 }
+
+                // Step 2: 若數量有變動，呼叫庫存更新（使用現有 API，同步 Excel）
+                if (qtyChanged) {
+                    const qtyRes = await fetch(`/api/inventory/update/${encodeURIComponent(part)}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ item_id: itemId, model_name: modelName, updates: { [field]: newQty } })
+                    });
+                    const qtyData = await qtyRes.json();
+                    if (!qtyData.success) {
+                        throw new Error(qtyData.error || '數量更新失敗');
+                    }
+                }
+
+                // 更新畫面
+                form.remove();
+                noteWrapper.style.display = '';
+                noteWrapper.querySelector('.note-text').textContent = newNote || '-';
+                if (qtyChanged) {
+                    const qtyCell = row.querySelector('.qty-cell');
+                    if (qtyCell) {
+                        row.setAttribute('data-qty', newQty);
+                        qtyCell.textContent = newQty > 0 ? `+${newQty}` : `${newQty}`;
+                    }
+                }
+                // 成功提示
+                const toast = document.createElement('div');
+                toast.textContent = '✅ 已儲存' + (qtyChanged ? '（數量已同步 Excel）' : '');
+                toast.style.cssText = 'position:fixed;bottom:2rem;right:2rem;background:#059669;color:white;padding:0.6rem 1.2rem;border-radius:8px;font-weight:600;z-index:99999;';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+
             } catch (err) {
-                alert('❌ 連線失敗：' + err.message);
+                alert('❌ 儲存失敗：' + err.message);
                 saveBtn.disabled = false;
                 saveBtn.textContent = '💾 儲存';
             }
@@ -2269,43 +2278,58 @@
             const modelName = item.getAttribute('data-model') || '';
             const newQty = parseInt(form.querySelector('.tl-qty-input').value);
             const newNote = form.querySelector('.tl-note-input').value;
+            const oldQty = parseInt(item.getAttribute('data-qty') || '0');
+            const qtyChanged = newQty !== oldQty;
 
             const saveBtn = form.querySelector('.tl-save-btn');
             saveBtn.disabled = true;
             saveBtn.textContent = '儲存中...';
 
             try {
-                const res = await fetch('/api/inventory/history/update-qty', {
+                // Step 1: 更新備註（使用現有 API）
+                const noteRes = await fetch('/api/inventory/history/update', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ part, item_id: itemId, timestamp, field, new_note: newNote, new_qty: newQty, model_name: modelName })
+                    body: JSON.stringify({ part, item_id: itemId, timestamp, field, new_note: newNote })
                 });
-                const data = await res.json();
-                if (data.success) {
-                    form.remove();
-                    // 更新顯示
-                    item.setAttribute('data-qty', newQty);
-                    const qtySpan = item.querySelector('.timeline-new-val');
-                    if (qtySpan) qtySpan.textContent = newQty;
-                    const noteArea = item.querySelector('.timeline-note-area');
-                    if (noteArea) {
-                        noteArea.innerHTML = newNote
-                            ? `<div class="timeline-note" style="font-size:0.85rem;color:#666;margin-bottom:0.25rem;">📝 ${newNote}</div>`
-                            : '';
-                    }
-                    // toast
-                    const toast = document.createElement('div');
-                    toast.textContent = '✅ 已儲存';
-                    toast.style.cssText = 'position:fixed;bottom:2rem;right:2rem;background:#059669;color:white;padding:0.6rem 1.2rem;border-radius:8px;font-weight:600;z-index:99999;';
-                    document.body.appendChild(toast);
-                    setTimeout(() => toast.remove(), 2500);
-                } else {
-                    alert('❌ 儲存失敗：' + (data.error || '未知錯誤'));
-                    saveBtn.disabled = false;
-                    saveBtn.textContent = '💾 儲存';
+                const noteData = await noteRes.json();
+                if (!noteData.success) {
+                    throw new Error(noteData.error || '備註更新失敗');
                 }
+
+                // Step 2: 若數量有變動，呼叫庫存更新（使用現有 API，同步 Excel）
+                if (qtyChanged) {
+                    const qtyRes = await fetch(`/api/inventory/update/${encodeURIComponent(part)}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ item_id: itemId, model_name: modelName, updates: { [field]: newQty } })
+                    });
+                    const qtyData = await qtyRes.json();
+                    if (!qtyData.success) {
+                        throw new Error(qtyData.error || '數量更新失敗');
+                    }
+                }
+
+                form.remove();
+                // 更新顯示
+                item.setAttribute('data-qty', newQty);
+                const qtySpan = item.querySelector('.timeline-new-val');
+                if (qtySpan) qtySpan.textContent = newQty;
+                const noteArea = item.querySelector('.timeline-note-area');
+                if (noteArea) {
+                    noteArea.innerHTML = newNote
+                        ? `<div class="timeline-note" style="font-size:0.85rem;color:#666;margin-bottom:0.25rem;">📝 ${newNote}</div>`
+                        : '';
+                }
+                // toast
+                const toast = document.createElement('div');
+                toast.textContent = '✅ 已儲存' + (qtyChanged ? '（數量已同步 Excel）' : '');
+                toast.style.cssText = 'position:fixed;bottom:2rem;right:2rem;background:#059669;color:white;padding:0.6rem 1.2rem;border-radius:8px;font-weight:600;z-index:99999;';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+
             } catch (err) {
-                alert('❌ 連線失敗：' + err.message);
+                alert('❌ 儲存失敗：' + err.message);
                 saveBtn.disabled = false;
                 saveBtn.textContent = '💾 儲存';
             }
