@@ -1591,28 +1591,15 @@
             saveBtn.textContent = '儲存中...';
 
             try {
-                // Step 1: 更新備註（使用現有 API）
+                // 更新備註與數量（不同步 Excel）
                 const noteRes = await fetch('/api/inventory/history/update', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ part, item_id: itemId, timestamp, field, new_note: newNote })
+                    body: JSON.stringify({ part, item_id: itemId, timestamp, field, new_note: newNote, new_qty: newQty })
                 });
                 const noteData = await noteRes.json();
                 if (!noteData.success) {
-                    throw new Error(noteData.error || '備註更新失敗');
-                }
-
-                // Step 2: 若數量有變動，呼叫庫存更新（使用現有 API，同步 Excel）
-                if (qtyChanged) {
-                    const qtyRes = await fetch(`/api/inventory/update/${encodeURIComponent(part)}`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ item_id: itemId, model_name: modelName, updates: { [field]: newQty } })
-                    });
-                    const qtyData = await qtyRes.json();
-                    if (!qtyData.success) {
-                        throw new Error(qtyData.error || '數量更新失敗');
-                    }
+                    throw new Error(noteData.error || '更新失敗');
                 }
 
                 // 更新畫面
@@ -1628,7 +1615,7 @@
                 }
                 // 成功提示
                 const toast = document.createElement('div');
-                toast.textContent = '✅ 已儲存' + (qtyChanged ? '（數量已同步 Excel）' : '');
+                toast.textContent = '✅ 已更新紀錄（未同步至 Excel）';
                 toast.style.cssText = 'position:fixed;bottom:2rem;right:2rem;background:#059669;color:white;padding:0.6rem 1.2rem;border-radius:8px;font-weight:600;z-index:99999;';
                 document.body.appendChild(toast);
                 setTimeout(() => toast.remove(), 3000);
@@ -2286,28 +2273,15 @@
             saveBtn.textContent = '儲存中...';
 
             try {
-                // Step 1: 更新備註（使用現有 API）
+                // 更新備註與數量（不同步 Excel）
                 const noteRes = await fetch('/api/inventory/history/update', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ part, item_id: itemId, timestamp, field, new_note: newNote })
+                    body: JSON.stringify({ part, item_id: itemId, timestamp, field, new_note: newNote, new_qty: newQty })
                 });
                 const noteData = await noteRes.json();
                 if (!noteData.success) {
-                    throw new Error(noteData.error || '備註更新失敗');
-                }
-
-                // Step 2: 若數量有變動，呼叫庫存更新（使用現有 API，同步 Excel）
-                if (qtyChanged) {
-                    const qtyRes = await fetch(`/api/inventory/update/${encodeURIComponent(part)}`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ item_id: itemId, model_name: modelName, updates: { [field]: newQty } })
-                    });
-                    const qtyData = await qtyRes.json();
-                    if (!qtyData.success) {
-                        throw new Error(qtyData.error || '數量更新失敗');
-                    }
+                    throw new Error(noteData.error || '更新失敗');
                 }
 
                 form.remove();
@@ -2323,7 +2297,7 @@
                 }
                 // toast
                 const toast = document.createElement('div');
-                toast.textContent = '✅ 已儲存' + (qtyChanged ? '（數量已同步 Excel）' : '');
+                toast.textContent = '✅ 已更新紀錄（未同步至 Excel）';
                 toast.style.cssText = 'position:fixed;bottom:2rem;right:2rem;background:#059669;color:white;padding:0.6rem 1.2rem;border-radius:8px;font-weight:600;z-index:99999;';
                 document.body.appendChild(toast);
                 setTimeout(() => toast.remove(), 3000);

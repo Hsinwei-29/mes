@@ -462,19 +462,20 @@ def api_item_history(part_type, item_id):
 @api_bp.route('/inventory/history/update', methods=['POST'])
 @login_required
 def api_update_history_note():
-    """更新歷程紀錄中的備註 (限登入者)"""
+    """更新歷程紀錄中的備註與數量 (限登入者)"""
     data = request.get_json()
     part = data.get('part')
     item_id = data.get('item_id')
     timestamp = data.get('timestamp')
     field = data.get('field')
     new_note = data.get('new_note')
+    new_qty = data.get('new_qty')
     
     if not all([part, item_id, timestamp, field]):
         return jsonify({'success': False, 'error': '缺少必要參數'}), 400
         
     from ..models.inventory import update_history_note
-    success = update_history_note(part, item_id, timestamp, field, new_note)
+    success = update_history_note(part, item_id, timestamp, field, new_note, new_qty)
     
     if success:
         return jsonify({'success': True})

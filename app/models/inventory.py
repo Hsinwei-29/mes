@@ -308,8 +308,8 @@ def load_casting_inventory():
         print(f"Error loading casting inventory: {e}")
         return {'summary': {}, 'semi_finished': {}, 'finished': {}, 'details': [], 'all_models': {}, 'error': str(e)}
 
-def update_history_note(part, item_id, timestamp, field, new_note):
-    """更新歷史紀錄中的備註資訊"""
+def update_history_note(part, item_id, timestamp, field, new_note, new_qty=None):
+    """更新歷史紀錄中的備註資訊與數量（不同步 Excel，僅供網頁顯示修正）"""
     try:
         log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs', 'edit_history.json')
         
@@ -328,6 +328,8 @@ def update_history_note(part, item_id, timestamp, field, new_note):
                 h.get('field') == field):
                 
                 h['note'] = new_note
+                if new_qty is not None:
+                    h['new_value'] = int(new_qty)
                 updated = True
                 break
         
