@@ -171,7 +171,12 @@
 
             <!-- 工單進度區 -->
             <section class="section orders-section">
-                <h2 class="section-title">📋 工單進度追蹤</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                    <h2 class="section-title" style="margin-bottom: 0;">📋 工單進度追蹤</h2>
+                    <div class="search-box">
+                        <input type="text" id="orderSearchInput" placeholder="🔍 搜尋工單號碼、品號..." style="padding: 10px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; width: 280px; outline: none; transition: border-color 0.2s; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);" onkeyup="handleOrderSearch(this.value)" onfocus="this.style.borderColor='#2196F3'" onblur="this.style.borderColor='#e0e0e0'">
+                    </div>
+                </div>
                 <div class="orders-stats" id="ordersStats">
                     <!-- 動態生成 -->
                 </div>

@@ -10,6 +10,7 @@ let allOrders = [];  // 儲存所有工單資料
 let currentFactory = 'all';  // 當前選中的工廠
 let allShortageMap = {}; // 儲存缺料狀態 {OrderNo: [PartTypes]}
 let tableFilterMode = 'shortage'; // 'shortage', 'active', 'all'
+let orderSearchQuery = ''; // 工單搜尋關鍵字
 
 // 鑄件顯示順序
 const PART_ORDER = ['底座', '工作台', '橫樑', '立柱', '定樑'];
@@ -654,6 +655,15 @@ function setTableFilter(mode) {
 }
 
 /**
+ * 處理工單搜尋
+ */
+function handleOrderSearch(query) {
+    orderSearchQuery = query.trim();
+    const filteredOrders = filterOrdersByFactory(currentFactory);
+    renderOrdersTable(filteredOrders);
+}
+
+/**
  * 渲染工單表格
  */
 function renderOrdersTable(orders) {
@@ -683,6 +693,13 @@ function renderOrdersTable(orders) {
         }
 
         return true;
+    }).filter(order => {
+        if (!orderSearchQuery) return true;
+        const q = orderSearchQuery.toLowerCase();
+        const orderNo = (order.工單 || '').toLowerCase();
+        const partNo = (order.物料品號 || '').toLowerCase();
+        const partDesc = (order.品號說明 || '').toLowerCase();
+        return orderNo.includes(q) || partNo.includes(q) || partDesc.includes(q);
     }).sort((a, b) => {
         const dateA = a.生產開始 ? new Date(a.生產開始).getTime() : 0;
         const dateB = b.生產開始 ? new Date(b.生產開始).getTime() : 0;
