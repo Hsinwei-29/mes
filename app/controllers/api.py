@@ -482,6 +482,42 @@ def api_update_history_note():
         return jsonify({'success': False, 'error': '更新失敗，找不到紀錄'}), 404
 
 
+@api_bp.route('/inventory/history/update-qty', methods=['POST'])
+@login_required
+def api_update_history_qty():
+    """更新歷程紀錄中的數量（同步 Excel）及備註 (限管理員)"""
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'error': '權限不足：只有管理員可修改數量'}), 403
+
+    data = request.get_json()
+    part = data.get('part')
+    item_id = data.get('item_id')
+    timestamp = data.get('timestamp')
+    field = data.get('field')
+    new_note = data.get('new_note')       # 可選
+    new_qty = data.get('new_qty')         # 若 None 則不修改數量
+    model_name = data.get('model_name')   # 輔助查找 Excel 列
+
+    if not all([part, item_id, timestamp, field]):
+        return jsonify({'success': False, 'error': '缺少必要參數'}), 400
+
+    if new_qty is not None:
+        try:
+            new_qty = int(new_qty)
+            if new_qty < 0:
+                return jsonify({'success': False, 'error': '數量不能為負數'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': '數量必須為整數'}), 400
+
+    from ..models.inventory import update_history_record
+    success, error = update_history_record(part, item_id, timestamp, field, new_note, new_qty, model_name=model_name)
+
+    if success:
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False, 'error': error or '更新失敗'}), 404
+
+
 @api_bp.route('/inventory/history/create_initial', methods=['POST'])
 @login_required
 def api_create_initial_history():

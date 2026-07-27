@@ -343,6 +343,113 @@ def update_history_note(part, item_id, timestamp, field, new_note):
         return False
 
 
+def update_history_record(part, item_id, timestamp, field, new_note, new_qty, model_name=None):
+    """更新歷史紀錄的備註與數量，並同步回寫 Excel（限製程轉換欄位）
+    
+    Returns: (success: bool, error_msg: str or None)
+    """
+    try:
+        log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs', 'edit_history.json')
+        if not os.path.exists(log_file):
+            return False, '找不到歷史紀錄檔'
+
+        with open(log_file, 'r', encoding='utf-8') as f:
+            history = json.load(f)
+
+        target = None
+        for h in history:
+            if (h.get('part') == part and
+                str(h.get('item_id')) == str(item_id) and
+                h.get('timestamp') == timestamp and
+                h.get('field') == field):
+                target = h
+                break
+
+        if target is None:
+            return False, '找不到對應的歷史紀錄'
+
+        old_new_value = target.get('new_value', 0)
+        old_old_value = target.get('old_value', 0)
+
+        # 計算數量差異 (新的 diff = new_qty - old_value，即保持 old_value 不變，只改 new_value)
+        qty_changed = (new_qty is not None) and (int(new_qty) != int(old_new_value or 0))
+
+        if qty_changed:
+            # 先更新 Excel 儲存格
+            try:
+                from flask import current_app
+                casting_file = current_app.config['CASTING_FILE']
+                sheet_idx = SHEET_MAP.get(part)
+                config = CONFIGS.get(part, [])
+                if sheet_idx is None:
+                    return False, '無效的鑄件類型'
+
+                col_idx = None
+                for label, idx in config:
+                    if label == field:
+                        col_idx = idx
+                        break
+                if col_idx is None:
+                    return False, f'無效的欄位: {field}'
+
+                wb = load_workbook(casting_file)
+                ws = wb.worksheets[sheet_idx]
+
+                target_row = None
+                check_id = str(item_id).strip()
+                if check_id.endswith('.0'): check_id = check_id[:-2]
+
+                if check_id and check_id not in ('N/A', 'nan'):
+                    for row_num in range(2, ws.max_row + 1):
+                        cell_value = str(ws.cell(row=row_num, column=1).value or '').strip()
+                        if cell_value.endswith('.0'): cell_value = cell_value[:-2]
+                        if cell_value == check_id:
+                            target_row = row_num
+                            break
+
+                if target_row is None and model_name:
+                    for row_num in range(2, ws.max_row + 1):
+                        mv = ws.cell(row=row_num, column=2).value
+                        if mv and str(mv).strip() == str(model_name).strip():
+                            target_row = row_num
+                            break
+
+                if target_row is not None:
+                    ws.cell(row=target_row, column=col_idx + 1, value=int(new_qty))
+                    # 重新計算總數
+                    total = 0
+                    for label, idx in config:
+                        if label != '總數':
+                            cv = ws.cell(row=target_row, column=idx + 1).value
+                            total += int(cv) if cv else 0
+                    for label, idx in config:
+                        if label == '總數':
+                            ws.cell(row=target_row, column=idx + 1, value=total)
+                            break
+                    wb.save(casting_file)
+                wb.close()
+            except Exception as ex:
+                print(f"[update_history_record] Excel update failed: {ex}")
+                return False, f'Excel 同步失敗：{ex}'
+
+            # 更新歷史記錄的 new_value
+            target['new_value'] = int(new_qty)
+
+        # 更新備註
+        if new_note is not None:
+            target['note'] = new_note
+
+        with open(log_file, 'w', encoding='utf-8') as f:
+            json.dump(history, f, ensure_ascii=False, indent=2)
+
+        return True, None
+
+    except Exception as e:
+        print(f"Error updating history record: {e}")
+        return False, str(e)
+
+
+
 def delete_history_record(part, item_id, timestamp, field):
     """從歷史紀錄中刪除特定紀錄"""
     try:

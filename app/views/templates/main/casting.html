@@ -1474,16 +1474,16 @@
                                 diffText = displayDiff > 0 ? `+${displayDiff}` : `+${displayDiff}`;
                             }
                             return `
-                                <tr data-part="${encodedPartName}" data-item="${h.item_id}" data-time="${h.timestamp}" data-field="${h.field}">
+                                <tr data-part="${encodedPartName}" data-item="${h.item_id}" data-time="${h.timestamp}" data-field="${h.field}" data-qty="${h.new_value ?? 0}" data-model="${modelName || ''}">
                                     <td style="font-size: 0.8rem;">${h.timestamp.split(' ')[0]}<br>${h.timestamp.split(' ')[1]}</td>
                                     <td>${action}</td>
-                                    <td style="font-weight: bold; color: ${diffColor};">${diffText}</td>
+                                    <td class="qty-cell" style="font-weight: bold; color: ${diffColor};">${diffText}</td>
                                     <td class="note-cell" style="font-size: 0.85rem; text-align: left;">
                                         <div class="note-content-wrapper" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                                             <span class="note-text">${h.note || '-'}</span>
                                             ${isLoggedIn ? `
                                             <div style="display: flex; gap: 6px; align-items: center;">
-                                                <button class="edit-note-btn" onclick="startEditNote(this)" title="編輯備註">✏️</button>
+                                                <button class="edit-note-btn" onclick="startEditCellRecord(this)" title="編輯數量與備註">✏️</button>
                                                 <button class="delete-note-btn" onclick="deleteHistoryRecord(this, '${itemId}', '${field}', '${modelName}')" title="刪除此筆記錄" style="background: none; border: none; cursor: pointer; padding: 2px 4px; font-size: 0.95rem; filter: grayscale(1); transition: filter 0.2s;" onmouseover="this.style.filter='none'" onmouseout="this.style.filter='grayscale(1)'">🗑️</button>
                                             </div>
                                             ` : ''}
@@ -1514,6 +1514,121 @@
         function closeCellHistoryModal() {
             const modal = document.getElementById('cellHistoryModal');
             if (modal) modal.classList.remove('active');
+        }
+
+        // ===== 庫存來源明細：inline 編輯數量 + 備註 =====
+        function startEditCellRecord(btn) {
+            const row = btn.closest('tr');
+            if (!row) return;
+
+            const currentQty = parseInt(row.getAttribute('data-qty') || '0');
+            const noteCell = row.querySelector('.note-cell');
+            const noteWrapper = noteCell ? noteCell.querySelector('.note-content-wrapper') : null;
+            if (!noteWrapper) return;
+
+            const currentNote = noteWrapper.querySelector('.note-text')?.textContent?.replace('-', '').trim() || '';
+
+            // 已經在編輯中就不再展開
+            if (noteWrapper.querySelector('.inline-edit-form')) return;
+
+            // 判斷是否為純備註（diff=0 時不允許修改數量）
+            const qtyCell = row.querySelector('.qty-cell');
+            const isDiff0 = qtyCell && qtyCell.textContent.trim() === '-';
+
+            // 隱藏原本顯示
+            noteWrapper.style.display = 'none';
+
+            // 插入 inline 表單
+            const form = document.createElement('div');
+            form.className = 'inline-edit-form';
+            form.style.cssText = 'display:flex; flex-direction:column; gap:6px; padding:6px; background:#f0f9ff; border:1.5px solid #38bdf8; border-radius:8px; min-width:220px;';
+            form.innerHTML = `
+                ${ !isDiff0 ? `
+                <label style="font-size:0.78rem; font-weight:600; color:#0369a1;">🔢 數量（修改後同步 Excel）</label>
+                <input type="number" class="inline-qty-input" value="${currentQty}" min="0"
+                    style="padding:4px 8px; border:1px solid #bae6fd; border-radius:6px; font-size:0.9rem; width:100px;">
+                ` : '' }
+                <label style="font-size:0.78rem; font-weight:600; color:#0369a1;">📝 備註</label>
+                <input type="text" class="inline-note-input" value="${currentNote}"
+                    style="padding:4px 8px; border:1px solid #bae6fd; border-radius:6px; font-size:0.9rem; width:100%;">
+                <div style="display:flex; gap:6px; justify-content:flex-end; margin-top:2px;">
+                    <button class="inline-save-btn" style="padding:3px 12px; background:#0284c7; color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.82rem; font-weight:600;">💾 儲存</button>
+                    <button class="inline-cancel-btn" style="padding:3px 10px; background:#e5e7eb; color:#374151; border:none; border-radius:6px; cursor:pointer; font-size:0.82rem;">取消</button>
+                </div>
+            `;
+
+            noteCell.appendChild(form);
+
+            // 儲存
+            form.querySelector('.inline-save-btn').addEventListener('click', () => saveCellRecord(row, form, noteWrapper, isDiff0));
+            // 取消
+            form.querySelector('.inline-cancel-btn').addEventListener('click', () => {
+                form.remove();
+                noteWrapper.style.display = '';
+            });
+            // Enter 快捷鍵
+            form.addEventListener('keydown', e => {
+                if (e.key === 'Enter') saveCellRecord(row, form, noteWrapper, isDiff0);
+                if (e.key === 'Escape') { form.remove(); noteWrapper.style.display = ''; }
+            });
+        }
+
+        async function saveCellRecord(row, form, noteWrapper, isDiff0) {
+            const part = decodeURIComponent(row.getAttribute('data-part') || partName);
+            const itemId = row.getAttribute('data-item');
+            const timestamp = row.getAttribute('data-time');
+            const field = row.getAttribute('data-field');
+            const modelName = row.getAttribute('data-model') || '';
+
+            const newNote = form.querySelector('.inline-note-input')?.value ?? null;
+            const qtyInput = form.querySelector('.inline-qty-input');
+            const newQty = (!isDiff0 && qtyInput) ? parseInt(qtyInput.value) : null;
+
+            const saveBtn = form.querySelector('.inline-save-btn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = '儲存中...';
+
+            try {
+                const res = await fetch('/api/inventory/history/update-qty', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ part, item_id: itemId, timestamp, field, new_note: newNote, new_qty: newQty, model_name: modelName })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // 更新畫面
+                    form.remove();
+                    noteWrapper.style.display = '';
+                    noteWrapper.querySelector('.note-text').textContent = newNote || '-';
+                    if (!isDiff0 && qtyInput && newQty !== null) {
+                        const qtyCell = row.querySelector('.qty-cell');
+                        if (qtyCell) {
+                            const oldQty = parseInt(row.getAttribute('data-qty') || '0');
+                            const oldOldQty = oldQty - (parseInt(row.getAttribute('data-qty') || '0'));
+                            // 重新計算 diff 顯示 (new - old_value)
+                            // 最簡單：直接顯示 +newQty（假設 old_value 不變）
+                            const prevDiff = newQty - (parseInt(row.getAttribute('data-qty') || '0') - (parseInt(row.getAttribute('data-qty') || '0') - parseInt(row.getAttribute('data-qty') || '0')));
+                            // 更新 row 的 data-qty
+                            row.setAttribute('data-qty', newQty);
+                            qtyCell.textContent = newQty > 0 ? `+${newQty}` : `${newQty}`;
+                        }
+                    }
+                    // 成功提示
+                    const toast = document.createElement('div');
+                    toast.textContent = '✅ 已儲存';
+                    toast.style.cssText = 'position:fixed;bottom:2rem;right:2rem;background:#059669;color:white;padding:0.6rem 1.2rem;border-radius:8px;font-weight:600;z-index:99999;';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 2500);
+                } else {
+                    alert('❌ 儲存失敗：' + (data.error || '未知錯誤'));
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = '💾 儲存';
+                }
+            } catch (err) {
+                alert('❌ 連線失敗：' + err.message);
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 儲存';
+            }
         }
 
         window.handleInitialNoteKey = function(event, itemId, field, modelName) {
